@@ -231,43 +231,26 @@ def LiveMenu(sender,page=1):
   pageContent = HTTP.Request(YOUTUBE_LIVE).content
   for movie in HTML.ElementFromString(pageContent).xpath("//div[contains(@id,'live-main')]//li[contains(@class,'yt-uix-slider-slide-item')]"):
     try:
-      title = movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a[@class="live-video-title"]')[0].text
+      title = movie.xpath('.//a[@class = "yt-uix-tile-link"]')[0].get('title')
     except:
       title = ""
       
     try:
-      id =  movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a')[0].get('href').split('/')[-1]
+      id =  movie.xpath('.//button')[0].get('data-video-ids')
     except:
       id = ""
   
     Log(id)
   
     try: 
-      thumb = movie.xpath('.//img[@alt="Thumbnail"]')[0].get('src')
+      thumb = movie.xpath('.//img[contains(@alt, "Thumbnail")]')[0].get('src')
     except:
       thumb = ICON
       
-    if not 'http://' in thumb:
-      thumb = 'http:' + thumb
-    
-    subtitle = ''
-    duration = None
-      
-    try:  
-      summary = movie.xpath(".//div[@class='details']//p[@class='description']")[0].text.strip()
-    except: 
-      summary = ''
-      
-    if 'Crackle' in summary:
-      jsondetails = re.findall("(?<='PLAYER_CONFIG':)([^']+);",HTTP.Request('http://www.youtube.com/watch?v='+id).content)
-      if len(jsondetails) >0 :
-        mediaid =  re.findall('(?<="mediaid": ")([^"]+)"',jsondetails[0])[0]
-        dir.Append(WebVideoItem(CRACKLE_URL%mediaid, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
+    if Prefs['Submenu'] == True:
+      dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title, thumb = Function(Thumb, url=thumb)), video_id=id, title = title))
     else:
-      if Prefs['Submenu'] == True:
-        dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration), video_id=id, title = title))
-      else:
-        dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
+      dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = Function(Thumb, url=thumb)))
 
   if '>Next<' in pageContent:
     dir.Append(Function(DirectoryItem(MoviesCategoryMenu, L("Next Page ...")), url=url, page = page + 1))
