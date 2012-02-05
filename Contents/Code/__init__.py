@@ -48,8 +48,6 @@ YOUTUBE_VIDEO_DETAILS = 'http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=js
 
 YOUTUBE_VIDEO_PAGE = 'http://www.youtube.com/watch?v=%s'
 
-YOUTUBE_VIDEO_FORMATS = ['Standard', 'Medium', 'High', '720p', '1080p']
-YOUTUBE_FMT = [34, 18, 35, 22, 37]
 USER_AGENT = 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2.12) Gecko/20101026 Firefox/3.6.12'
 
 YT_NAMESPACE = 'http://gdata.youtube.com/schemas/2007'
@@ -109,7 +107,7 @@ def MainMenu():
   #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
   #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
-  #oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
+  oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
 
   #if Dict['loggedIn'] == True:
   #  oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('Trailers')))
@@ -190,8 +188,79 @@ def LiveMenu(title):
 
   if len(oc) == 0:
     return MessageContainer("Empty", "There aren't any items")
-  else:
-    return oc
+
+  return oc
+
+####################################################################################################
+## TRAILERS
+####################################################################################################
+
+def TrailersMenu(title):
+  oc = ObjectContainer(title2 = title)
+
+  page = HTML.ElementFromURL(YOUTUBE_TRAILERS)
+  categories = page.xpath("//div[@class='trailer-list']/preceding-sibling::h3/a")
+  for category in categories:
+    title = category.text.strip()
+    oc.add(DirectoryObject(
+      key = Callback(TrailersVideos, title = title, url = YOUTUBE + category.get('href')),
+      title = title))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+def TrailersVideos(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
+
+  page_content = HTTP.Request(url+'&p='+str(page)).content
+  page = HTML.ElementFromString(page_content)
+  for trailer in page.xpath("//div[contains(@class,'trailer-cell')]"):
+
+    video_url = YOUTUBE + trailer.xpath('.//a')[0].get('href')
+    title = trailer.xpath('.//div[@class="trailer-short-title"]/a/text()')[0].strip()
+    thumb = trailer.xpath('.//img')[0].get('data-thumb')
+    summary = trailer.xpath('.//div[@class = "video-description"]/text()')[0].strip()
+
+    # [Optional]
+    try:
+      date = trailer.xpath('.//span[contains(@class, "video-release-date")]/text()')[0].strip()
+      date = date.replace('Opened', '').strip()
+      date = Datetime.ParseDate(date)
+    except:
+      date = None
+      pass
+
+    if Prefs['Submenu'] == True:
+      oc.add(DirectoryObject(
+        key = Callback(
+          VideoSubMenu, 
+          title = title, 
+          video_id = None,
+          video_url = video_url,
+          summary = summary,
+          thumb = thumb), 
+        title = title,
+        summary = summary,
+        thumb = Callback(GetThumb, url = thumb)))
+    else:
+      oc.add(VideoClipObject(
+        url = video_url,
+        title = title,
+        thumb = Callback(GetThumb, url = thumb),
+        summary = summary,
+        originally_available_at = date))
+
+  if '>Next<' in page_content:
+    oc.add(DirectoryObject(
+      key = Callback(TrailersVideos, title = title, url = url, page = page + 1),
+      title = L("Next Page ...")))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
 
 ####################################################################################################
 ## AUTHENTICATION
@@ -293,7 +362,7 @@ def CheckRejectedEntry(entry):
 
 def ParseFeed(title, url, page = 1):
   oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
-  Log("START PARSE")
+
   # Construct the appropriate URL
   local_url = AddJSONSuffix(url)
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
@@ -385,9 +454,55 @@ def ParseFeed(title, url, page = 1):
   if len(oc) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
   else:
-    Log("END PARSE")
     return oc
-    
+
+def ParseChannelFeed(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+
+  # Construct the appropriate URL
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  local_url = Regionalize(local_url)
+
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  if rawfeed['feed'].has_key('entry'):
+    for video in rawfeed['feed']['entry']:
+
+      feedpage = video['author'][0]['uri']['$t']+'?v=2&alt=json'
+
+      title = video['title']['$t']
+      summary = video['summary']['$t']
+      thumb = video['media$group']['media$thumbnail'][0]['url']
+      oc.add(DirectoryObject(
+        key = Callback(ParsePreFeed, title = title, feedpage = feedpage),
+        title = title,
+        summary = summary,
+        thumb = Callback(GetThumb, url = thumb)))
+
+    # Check to see if there are any futher results available.
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+          title = 'Next'))
+
+  if len(oc) == 0:
+    return MessageContainer(L('Error'), L('This query did not return any result'))
+  else:
+    return oc
+
+def ParsePreFeed(title, feedpage):
+  videos = JSON.ObjectFromURL(feedpage, encoding='utf-8')['entry']['gd$feedLink']
+  for vid in videos:
+    if 'upload' in vid['rel']:
+      link = vid['href']
+      
+  return ParseFeed(title, url = link)
+
 def ParseChannelSearch(title, url, page = 1):
   oc = ObjectContainer(view_group = 'InfoList', replace_parent = (page > 1))
 
