@@ -785,11 +785,11 @@ def ParseSubscriptions(sender=None, url='',page=1):
   if rawfeed['feed'].has_key('entry'):
     for subscription in rawfeed['feed']['entry']:
       link = subscription['content']['src']
-      if 'Activity of :' in subscription['title']['$t']:
-        title = subscription['title']['$t'].replace('Activity of :','') + L(" (Activity)")
+      if 'Activity of' in subscription['title']['$t']:
+        title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Activity)")
         dir.Append(Function(DirectoryItem(ParseSubscriptionFeed, title=title), url=link))
       else : 
-        title = subscription['title']['$t'].replace('Videos published by :','') + L(" (Videos)")
+        title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Videos)")
         dir.Append(Function(DirectoryItem(ParseFeed, title=title), url=link))
 
   if len(dir) == 0:
