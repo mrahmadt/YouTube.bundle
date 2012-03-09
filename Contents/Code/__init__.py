@@ -84,12 +84,13 @@ def Start():
   HTTP.Headers['User-Agent'] = USER_AGENT
   HTTP.Headers['X-GData-Key'] = "key="+DEVELOPER_KEY
   
-  Authenticate()
+#  Authenticate()
 
 ####################################################################################################
 
 def ValidatePrefs():
-  Authenticate()
+  pass
+#  Authenticate()
 
 ####################################################################################################
 
@@ -109,8 +110,8 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
   oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
 
-  #if Dict['loggedIn'] == True:
-  #  oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('Trailers')))
+  #if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+  #  oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
 
@@ -127,7 +128,7 @@ def VideosMenu(title):
   oc.add(DirectoryObject(key = Callback(SubMenu, title = L('This Month'), category = 'this_month'), title = L('This Month'))) 
   oc.add(DirectoryObject(key = Callback(SubMenu, title = L('All Time'), category = 'all_time'), title = L('All Time'))) 
   oc.add(DirectoryObject(key = Callback(ParseFeed, title = L('Most Recent'), url = YOUTUBE_STANDARD_MOST_RECENT_URI), title = L('Most Recent'))) 
-  oc.add(InputDirectoryObject(key = Callback(Search, search_type = 'videos', title = L('Search Videos')), title = L('Search Videos')))
+  oc.add(InputDirectoryObject(key = Callback(Search, search_type = 'videos', title = L('Search Videos')), title = L('Search Videos'), prompt = L('Search Videos')))
   return oc
 
 ####################################################################################################
@@ -145,7 +146,8 @@ def ChannelsMenu(title):
     title = L('Most Subscribed'))) 
   oc.add(InputDirectoryObject(
     key = Callback(Search, search_type = 'channels', title = L('Search Channels')), 
-    title = L('Search Channels')))
+    title = L('Search Channels'),
+    prompt = L('Search Channels')))
 
   return oc
 
@@ -263,6 +265,142 @@ def TrailersVideos(title, url, page = 1):
   return oc
 
 ####################################################################################################
+## MY ACCOUNT
+####################################################################################################
+
+def MyAccount(title):
+  oc = ObjectContainer(title2 = title)
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = L('My Videos'), url = YOUTUBE_USER_VIDEOS % 'default'),
+    title = L('My Videos')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = L('My Favorites'), url = YOUTUBE_USER_FAVORITES % 'default'),
+    title = L('My Favorites')))
+  oc.add(DirectoryObject(
+    key = Callback(ParsePlaylists, title = L('My Playlists'), url = YOUTUBE_USER_PLAYLISTS % 'default'),
+    title = L('My Playlists')))
+  #oc.add(DirectoryObject(
+  #  key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
+  #  title = L('My Subscriptions')))
+  oc.add(DirectoryObject(
+    key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
+    title = L('My Contacts')))
+
+  return oc
+   
+def MyContacts(title, url):
+  oc = ObjectContainer(title2 = title)
+
+  contacts_page = JSON.ObjectFromURL(url, encoding='utf-8')
+  if contacts_page['feed']['openSearch$totalResults'] == 0:
+    oc = MessageContainer(L("Error"), L("You have no contacts"))
+  else:
+    for contact in contacts_page['feed']['entry']:
+      if contact.has_key('yt$status') and contact['yt$status']['$t'] == 'accepted':
+        username = contact['yt$username']['$t'].strip()
+        oc.add(DirectoryObject(key = Callback(ContactPage, username = username), title = username))
+
+  return oc
+
+def ContactPage(username):
+  oc = ObjectContainer()
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s uploads'), url = YOUTUBE_OTHER_USER_FEED % username),
+    title = username + L('\'s uploads')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s favorites'), url = YOUTUBE_USER_FAVORITES % username),
+    title = username + L('\'s favorites')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s playlists'), url = YOUTUBE_USER_PLAYLISTS % username),
+    title = username + L('\'s playlists')))
+  return oc
+
+####################################################################################################
+## SHOWS
+####################################################################################################
+
+def ShowsMenu(title):
+  oc = ObjectContainer(title2 = title)
+
+  page = HTML.ElementFromURL(YOUTUBE_SHOWS)
+  categories = page.xpath("//div[contains(@class, 'slider-title')]//a")
+  for category in categories:
+    title = category.text.split('»')[0].strip()
+    oc.add(DirectoryObject(
+      key = Callback(ShowsCategoryMenu, title = title, url = YOUTUBE + category.get('href')),
+      title = title))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+def ShowsCategoryMenu(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
+
+  page_content = HTTP.Request(url + '?p=' + str(page)).content
+  page = HTML.ElementFromString(page_content)
+  for show in page.xpath("//ul[@class='browse-item-list']//div[contains(@class, 'browse-item')]"):
+
+    title = show.xpath('.//h3/a//text()')[0].strip()
+    link = YOUTUBE + show.xpath('.//a')[0].get('href')
+
+    thumb = R(ICON)
+    try: thumb = show.xpath('.//img')[0].get('src')
+    except: pass
+
+    oc.add(DirectoryObject(
+      key = Callback(ShowsVideos, title = title, url = link, thumb = thumb),
+      title = title,
+      thumb = Callback(GetThumb, url = thumb)))
+
+  if '>Next<' in page_content:
+    oc.add(DirectoryObject(
+      key = Callback(ShowsCategoryMenu, title = title, url = url, page = page + 1),
+      title = L("Next Page ...")))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+def ShowsVideos(title, url, thumb):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+
+  page = HTML.ElementFromURL(url)
+  for episode in page.xpath("//tbody/tr"):
+
+    title = episode.xpath('./td[3]//h3')[0].text.strip()
+    video_url = episode.xpath('./td[3]//a')[0].get('href')
+    duration = GetDurationFromString(episode.xpath('./td[3]//p[@class="info"]')[0].text.strip())
+    summary = episode.xpath('./td[3]//p[@class="description"]')[0].text.strip()
+      
+    if Prefs['Submenu'] == True:
+      oc.add(DirectoryObject(
+        key = Callback(
+          VideoSubMenu, 
+          title = title, 
+          video_id = None,
+          video_url = video_url,
+          summary = summary,
+          thumb = thumb), 
+        title = title,
+        summary = summary,
+        thumb = Callback(GetThumb, url = thumb)))
+    else:
+      oc.add(VideoClipObject(
+        url = video_url,
+        title = title,
+        thumb = Callback(GetThumb, url = thumb),
+        summary = summary,
+        originally_available_at = date))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+####################################################################################################
 ## AUTHENTICATION
 ####################################################################################################
  
@@ -270,7 +408,7 @@ def Authenticate():
 
   # Only when username and password are set
   if Prefs['youtube_user'] and Prefs['youtube_passwd']:
-    if Dict['Session'] :
+    if 'Session' in Dict:
       try:
         req = HTTP.Request('https://www.youtube.com/', values=dict(
             session_token = Dict['Session'],
@@ -535,6 +673,39 @@ def ParseChannelSearch(title, url, page = 1):
 
   if len(oc) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
+  else:
+    return oc
+
+def ParsePlaylists(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  if rawfeed['feed'].has_key('entry'):
+    for video in rawfeed['feed']['entry']:
+      link = video['content']['src']
+      title = video['title']['$t']
+      summary = video['summary']['$t']
+      oc.add(DirectoryObject(
+        key = Callback(ParseFeed, title = title, url = link),
+        title = title,
+        summary = summary))
+
+  # Check to see if there are any futher results available.
+  if rawfeed['feed'].has_key('openSearch$totalResults'):
+    total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+    items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+    start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+    if (start_index + items_per_page) < total_results:
+      oc.add(DirectoryObject(
+        key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+        title = 'Next'))
+
+  if len(oc) == 0:
+    return MessageContainer(L('Error'), L('This query did not return any result'))
   else:
     return oc
 
