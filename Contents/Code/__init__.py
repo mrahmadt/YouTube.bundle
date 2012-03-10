@@ -479,6 +479,9 @@ def Search(query, title = '', search_type = 'videos'):
   return oc
 
 ####################################################################################################
+def CleanString(string):
+  return String.StripTags(string).replace('&amp;','&')
+
 def AddJSONSuffix(url):
   if '?' in url:
     return url + '&alt=json'
@@ -652,8 +655,8 @@ def ParseChannelSearch(title, url, page = 1):
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['gd$feedLink'][0]['href']
-      title = video['title']['$t']
-      summary = video['summary']['$t']
+      title = CleanString(video['title']['$t'])
+      summary = CleanString(video['summary']['$t'])
       author = video['author'][0]['name']['$t']
 
       oc.add(DirectoryObject(
