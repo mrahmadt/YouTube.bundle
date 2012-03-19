@@ -325,6 +325,12 @@ def ShowsMenu(title):
   page = HTML.ElementFromURL(YOUTUBE_SHOWS)
   categories = page.xpath("//div[contains(@class, 'slider-title')]//a")
   for category in categories:
+
+    # We currently don't support 'Catchup'
+    url = YOUTUBE + category.get('href')
+    if url.find('shows?') > -1:
+      continue
+
     title = category.text.split('»')[0].strip()
     oc.add(DirectoryObject(
       key = Callback(ShowsCategoryMenu, title = title, url = YOUTUBE + category.get('href')),
@@ -336,22 +342,24 @@ def ShowsMenu(title):
   return oc
 
 def ShowsCategoryMenu(title, url, page = 1):
-  oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
 
   page_content = HTTP.Request(url + '?p=' + str(page)).content
   page = HTML.ElementFromString(page_content)
-  for show in page.xpath("//ul[@class='browse-item-list']//div[contains(@class, 'browse-item')]"):
+  for show in page.xpath("//ul[@class='browse-item-list']//div[contains(@class, 'show-item')]"):
 
     title = show.xpath('.//h3/a//text()')[0].strip()
     link = YOUTUBE + show.xpath('.//a')[0].get('href')
+    summary = show.xpath('//div[@class = "details"]/text()')[0].strip()
 
     thumb = R(ICON)
     try: thumb = show.xpath('.//img')[0].get('src')
     except: pass
 
     oc.add(DirectoryObject(
-      key = Callback(ShowsVideos, title = title, url = link, thumb = thumb),
+      key = Callback(ShowSeasons, title = title, url = link, thumb = thumb),
       title = title,
+      summary = summary,
       thumb = Callback(GetThumb, url = thumb)))
 
   if '>Next<' in page_content:
@@ -364,41 +372,73 @@ def ShowsCategoryMenu(title, url, page = 1):
 
   return oc
 
+def ShowSeasons(title, url, thumb):
+
+  page = HTML.ElementFromURL(url)
+  single_season = len(page.xpath("//div[@class='seasons-label only-season']")) == 1
+  if (single_season):
+    return ShowsVideos(title, url, thumb)
+
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+  seasons = page.xpath("//div[contains(@class, 'season')]//span/button")
+  for season in seasons:
+    season_title = "Season %s" % season.get('data-season-number')
+    season_url = YOUTUBE + season.get('data-clips-url')
+    oc.add(DirectoryObject(
+      key = Callback(ShowsVideos, title = title, url = season_url, thumb = thumb),
+      title = season_title,
+      thumb = thumb))
+
+  return oc
+
 def ShowsVideos(title, url, thumb):
   oc = ObjectContainer(title2 = title, view_group = 'InfoList')
 
   page = HTML.ElementFromURL(url)
-  for episode in page.xpath("//tbody/tr"):
 
-    title = episode.xpath('./td[3]//h3')[0].text.strip()
-    video_url = episode.xpath('./td[3]//a')[0].get('href')
-    duration = GetDurationFromString(episode.xpath('./td[3]//p[@class="info"]')[0].text.strip())
-    summary = episode.xpath('./td[3]//p[@class="description"]')[0].text.strip()
-      
-    if Prefs['Submenu'] == True:
-      oc.add(DirectoryObject(
-        key = Callback(
-          VideoSubMenu, 
-          title = title, 
-          video_id = None,
-          video_url = video_url,
+  selected_season = page.xpath("//div[contains(@class, 'season')]//span/button[contains(@class, 'toggled')]")[0]
+  ajax_url = YOUTUBE + selected_season.get('data-episodes-ajax-url')
+
+  while(True):
+    ajax_source = JSON.ObjectFromURL(ajax_url)
+    ajax_data = HTML.ElementFromString(ajax_source['videos_html'])
+
+    videos = ajax_data.xpath("//div[contains(@class, 'entity-video-item ')]")
+    for video in videos:
+      title = video.xpath('./div//a')[0].get('title')
+      video_url = YOUTUBE + video.xpath('./div//a')[0].get('href')
+      summary = video.xpath('./div//p[@dir="ltr"]/text()')[0].strip()
+      thumb = "http:" + video.xpath('.//img')[0].get('src')
+
+      if Prefs['Submenu'] == True:
+        oc.add(DirectoryObject(
+          key = Callback(
+            VideoSubMenu, 
+            title = title, 
+            video_id = None,
+            video_url = video_url,
+            summary = summary,
+            thumb = thumb), 
+          title = title,
           summary = summary,
-          thumb = thumb), 
-        title = title,
-        summary = summary,
-        thumb = Callback(GetThumb, url = thumb)))
-    else:
-      oc.add(VideoClipObject(
-        url = video_url,
-        title = title,
-        thumb = Callback(GetThumb, url = thumb),
-        summary = summary,
-        originally_available_at = date))
+          thumb = Callback(GetThumb, url = thumb)))
+      else:
+        oc.add(VideoClipObject(
+          url = video_url,
+          title = title,
+          thumb = Callback(GetThumb, url = thumb),
+          summary = summary))
+
+    # We will continue to loop, until we have found all available videos
+    if ajax_source['show_more'] == None:
+      break
+    ajax_url = ajax_source['show_more']
 
   if len(oc) == 0:
     return MessageContainer("Empty", "There aren't any items")
 
   return oc
+
 
 ####################################################################################################
 ## AUTHENTICATION
