@@ -16,7 +16,7 @@ YOUTUBE_STANDARD_MOST_RESPONDED_URI = '%s/REGIONID/%s' % (YOUTUBE_STANDARD_FEEDS
 YOUTUBE_USER_FEED = 'http://gdata.youtube.com/feeds/api/users/%s'
 YOUTUBE_OTHER_USER_FEED = 'http://gdata.youtube.com/feeds/api/users/%s/uploads?alt=json'
 YOUTUBE_USER_PROFILE = 'http://gdata.youtube.com/feeds/api/users/%s?alt=json'
-YOUTUBE_USER_VIDEOS = YOUTUBE_USER_FEED+'/uploads'
+YOUTUBE_USER_VIDEOS = YOUTUBE_USER_FEED+'/uploads?v=2'
 YOUTUBE_USER_FAVORITES = YOUTUBE_USER_FEED+'/favorites?v=2'
 YOUTUBE_USER_PLAYLISTS = YOUTUBE_USER_FEED+'/playlists?v=2'
 YOUTUBE_USER_SUBSCRIPTIONS = YOUTUBE_USER_FEED+'/subscriptions?v=2'
@@ -406,6 +406,9 @@ def TrailersVideos(sender,url,page=1):
 ####################################################################################################
 
 def MyAccount(sender):
+
+  Authenticate()
+
   dir = MediaContainer()
   dir.Append(Function(DirectoryItem(ParseFeed, L('My Videos')), url=YOUTUBE_USER_VIDEOS % 'default'))
   dir.Append(Function(DirectoryItem(ParseFeed, L('My Favorites')), url=YOUTUBE_USER_FAVORITES % 'default'))
@@ -610,7 +613,7 @@ def ParseFeed(sender=None, url='', page=1):
       if (need_next):
         dir.Append(Function(DirectoryItem(ParseFeed, title="Next"), url=url,page = page+1))
   except:
-    return  MessageContainer(L('Error'), L('This feed does not contain any video'))
+    return MessageContainer(L('Error'), L('This feed does not contain any video'))
 
   if len(dir) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
