@@ -568,6 +568,7 @@ def ParseFeed(title, url, page = 1):
         for video_links in video['link']:
           if video_links['type'] == 'text/html':
             video_url = video_links['href']
+            break
 
         # This is very unlikely to occur, but we should at least log.
         if video_url is None:
