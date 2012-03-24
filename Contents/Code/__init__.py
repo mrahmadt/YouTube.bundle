@@ -539,9 +539,21 @@ def Regionalize(url):
 
 def CheckRejectedEntry(entry):
   try:
-    return entry['app$control']['yt$state']['name'] in ['deleted', 'rejected', 'restricted']
+    status_name = entry['app$control']['yt$state']['name']
+
+    if status_name in ['deleted', 'rejected', 'failed']:
+      return True
+
+    if status_name == 'restricted':
+      status_reason = entry['app$control']['yt$state']['reasonCode']
+
+      if status_reason in ['private', 'requesterRegion']:
+        return True
+
   except:
-    return False
+    pass
+
+  return False
 
 def ParseFeed(title, url, page = 1):
   oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
@@ -820,7 +832,7 @@ def ParsePlaylists(title, url, page = 1):
   local_url += '&max-results=' + str(MAXRESULTS)
   
   rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
-  Log(JSON.StringFromObject(rawfeed))
+#  Log(JSON.StringFromObject(rawfeed))
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['content']['src']
