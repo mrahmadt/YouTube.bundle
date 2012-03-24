@@ -16,7 +16,7 @@ YOUTUBE_STANDARD_MOST_RESPONDED_URI = '%s/REGIONID/%s' % (YOUTUBE_STANDARD_FEEDS
 YOUTUBE_USER_FEED = 'http://gdata.youtube.com/feeds/api/users/%s'
 YOUTUBE_OTHER_USER_FEED = 'http://gdata.youtube.com/feeds/api/users/%s/uploads?alt=json'
 YOUTUBE_USER_PROFILE = 'http://gdata.youtube.com/feeds/api/users/%s?alt=json'
-YOUTUBE_USER_VIDEOS = YOUTUBE_USER_FEED+'/uploads'
+YOUTUBE_USER_VIDEOS = YOUTUBE_USER_FEED+'/uploads?v=2'
 YOUTUBE_USER_FAVORITES = YOUTUBE_USER_FEED+'/favorites?v=2'
 YOUTUBE_USER_PLAYLISTS = YOUTUBE_USER_FEED+'/playlists?v=2'
 YOUTUBE_USER_SUBSCRIPTIONS = YOUTUBE_USER_FEED+'/subscriptions?v=2'
@@ -84,13 +84,13 @@ def Start():
   HTTP.Headers['User-Agent'] = USER_AGENT
   HTTP.Headers['X-GData-Key'] = "key="+DEVELOPER_KEY
   
-#  Authenticate()
+  Dict.Reset()
+  Authenticate()
 
 ####################################################################################################
 
 def ValidatePrefs():
-  pass
-#  Authenticate()
+  Authenticate()
 
 ####################################################################################################
 
@@ -110,8 +110,8 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
   oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
 
-  #if 'loggedIn' in Dict and Dict['loggedIn'] == True:
-  #  oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
+  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+    oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
 
@@ -269,6 +269,9 @@ def TrailersVideos(title, url, page = 1):
 ####################################################################################################
 
 def MyAccount(title):
+
+  Authenticate()
+
   oc = ObjectContainer(title2 = title)
   oc.add(DirectoryObject(
     key = Callback(ParseFeed, title = L('My Videos'), url = YOUTUBE_USER_VIDEOS % 'default'),
@@ -279,9 +282,9 @@ def MyAccount(title):
   oc.add(DirectoryObject(
     key = Callback(ParsePlaylists, title = L('My Playlists'), url = YOUTUBE_USER_PLAYLISTS % 'default'),
     title = L('My Playlists')))
-  #oc.add(DirectoryObject(
-  #  key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
-  #  title = L('My Subscriptions')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
+    title = L('My Subscriptions')))
   oc.add(DirectoryObject(
     key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
     title = L('My Contacts')))
@@ -290,9 +293,8 @@ def MyAccount(title):
    
 def MyContacts(title, url):
   oc = ObjectContainer(title2 = title)
-
   contacts_page = JSON.ObjectFromURL(url, encoding='utf-8')
-  if contacts_page['feed']['openSearch$totalResults'] == 0:
+  if contacts_page['feed']['openSearch$totalResults']['$t'] == 0:
     oc = MessageContainer(L("Error"), L("You have no contacts"))
   else:
     for contact in contacts_page['feed']['entry']:
@@ -637,6 +639,93 @@ def ParseFeed(title, url, page = 1):
   else:
     return oc
 
+def ParseSubscriptionFeed(title, url = '',page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+
+  # Construct the appropriate URL
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  local_url = Regionalize(local_url)
+
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  for video in rawfeed['feed']['entry']:
+    if ('events?' in url) and ('video' in video['category'][1]['term']):
+      for details in video['link'][1]['entry']:
+        if details.has_key('yt$videoid'):
+          video_id = details['yt$videoid']['$t']
+        elif details['media$group'].has_key('media$player'):
+          try:
+            video_page = details['media$group']['media$player'][0]['url']
+          except:
+            video_page = details['media$group']['media$player']['url']
+            video_id = re.search('v=([^&]+)', video_page).group(1)
+        else:  
+          video_id = None
+
+        video_title = details['title']['$t']
+
+        if (video_id != None) and not(video.has_key('app$control')):
+          video_url = YOUTUBE_VIDEO_PAGE % video_id
+
+          try:
+            date = Datetime.ParseDate(details['published']['$t'].split('T')[0])
+          except: 
+            date = Datetime.ParseDate(details['updated']['$t'].split('T')[0])
+
+          try: 
+            summary = details['content']['$t']
+          except:
+            summary = details['media$group']['media$description']['$t']
+            summary = summary.split('!express')[0]
+
+          duration = int(details['media$group']['yt$duration']['seconds']) * 1000
+
+          try:
+            rating = float(details['gd$rating']['average']) * 2
+          except:
+            rating = None
+
+          thumb = details['media$group']['media$thumbnail'][0]['url']
+
+          if Prefs['Submenu'] == True and video_id is not None:
+            oc.add(DirectoryObject(
+              key = Callback(
+                VideoSubMenu, 
+                title = video_title, 
+                video_id = video_id,
+                video_url = video_url, 
+                summary = summary,
+                thumb = thumb,
+                originally_available_at = date,
+                rating = rating),
+              title = video_title,
+              summary = summary,
+              thumb = Callback(GetThumb, url = thumb)))
+          else:
+            oc.add(VideoClipObject(
+              url = video_url,
+              title = video_title,
+              summary = summary,
+              thumb = Callback(GetThumb, url = thumb),
+              originally_available_at = date,
+              rating = rating))
+
+        # Check to see if there are any futher results available.
+        if rawfeed['feed'].has_key('openSearch$totalResults'):
+          total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+          items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+          start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+          if (start_index + items_per_page) < total_results:
+            oc.add(DirectoryObject(
+              key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+              title = 'Next'))
+
+  if len(oc) == 0:
+    return MessageContainer(L('Error'), L('This feed does not contain any video'))
+  else:
+    return oc
+
 def ParseChannelFeed(title, url, page = 1):
   oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
 
@@ -727,6 +816,7 @@ def ParsePlaylists(title, url, page = 1):
   local_url += '&max-results=' + str(MAXRESULTS)
   
   rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  Log(JSON.StringFromObject(rawfeed))
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['content']['src']
@@ -750,6 +840,44 @@ def ParsePlaylists(title, url, page = 1):
   if len(oc) == 0:
     return MessageContainer(L('Error'), L('This query did not return any result'))
   else:
+    return oc
+
+def ParseSubscriptions(title, url = '',page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+  
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  if rawfeed['feed'].has_key('entry'):
+    for subscription in rawfeed['feed']['entry']:
+      link = subscription['content']['src']
+      if 'Activity of' in subscription['title']['$t']:
+        title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Activity)")
+        oc.add(DirectoryObject(
+          key = Callback(ParseSubscriptionFeed, title = title, url = link),
+          title = title))
+      else : 
+        title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Videos)")
+        oc.add(DirectoryObject(
+          key = Callback(ParseFeed, title = title, url = link),
+          title = title))
+
+  if len(oc) == 0:
+    if 'default' in url:
+      return MessageContainer(L('Error'), L('You have no subscriptions'))
+    else:
+      return MessageContainer(L('Error'), L('This user has no subscriptions'))
+  else:
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseSubscriptions, title = title, url = url, page = page + 1), 
+          title = 'Next'))
     return oc
 
 ####################################################################################################
@@ -776,7 +904,7 @@ def VideoSubMenu(title, video_id, video_url, summary = None, thumb = None, origi
   oc = ObjectContainer(title2 = title)
 
   if video_id == None:
-    video_id = None
+    video_id = re.search('v=([^&]+)', video_url).group(1)
 
   oc.add(VideoClipObject(
     url = video_url,
