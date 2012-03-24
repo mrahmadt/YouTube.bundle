@@ -48,35 +48,43 @@ YOUTUBE_VIDEO_DETAILS = 'http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=js
 
 YOUTUBE_VIDEO_PAGE = 'http://www.youtube.com/watch?v=%s'
 
-YOUTUBE_VIDEO_FORMATS = ['Standard', 'Medium', 'High', '720p', '1080p']
-YOUTUBE_FMT = [34, 18, 35, 22, 37]
 USER_AGENT = 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2.12) Gecko/20101026 Firefox/3.6.12'
 
 YT_NAMESPACE = 'http://gdata.youtube.com/schemas/2007'
 
+TITLE = 'YouTube'
 ART = 'art-default.jpg'
 ICON = 'icon-default.png'
+PREFS = 'icon-prefs.png'
+SEARCH = 'icon-search.png'
 
 ####################################################################################################
 
 def Start():
-  Plugin.AddPrefixHandler('/video/youtube', MainMenu, 'YouTube', ICON, ART)
+  Plugin.AddPrefixHandler('/video/youtube', MainMenu, TITLE, ICON, ART)
   Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
   Plugin.AddViewGroup('InfoList', viewMode='InfoList', mediaType='items')
   Plugin.AddViewGroup('PanelStream', viewMode='PanelStream', mediaType='items')
 
-  MediaContainer.title1 = 'YouTube'
-  MediaContainer.viewGroup = 'List'
-  MediaContainer.art = R(ART)
-  MediaContainer.userAgent = ''
+  ObjectContainer.title1 = TITLE
+  ObjectContainer.view_group = 'List'
+  ObjectContainer.art = R(ART)
 
-  DirectoryItem.thumb = R(ICON)
-  VideoItem.thumb = R(ICON)
+  DirectoryObject.thumb = R(ICON)
+  DirectoryObject.art = R(ART)
+  VideoClipObject.thumb = R(ICON)
+  VideoClipObject.art = R(ART)
+
+  PrefsObject.thumb = R(PREFS)
+  PrefsObject.art = R(ART)
+  InputDirectoryObject.thumb = R(SEARCH)
+  InputDirectoryObject.art = R(ART)
 
   HTTP.CacheTime = 3600
   HTTP.Headers['User-Agent'] = USER_AGENT
   HTTP.Headers['X-GData-Key'] = "key="+DEVELOPER_KEY
   
+  Dict.Reset()
   Authenticate()
 
 ####################################################################################################
@@ -84,17 +92,10 @@ def Start():
 def ValidatePrefs():
   Authenticate()
 
-def Thumb(url):
-  try:
-    data = HTTP.Request(url, cacheTime=CACHE_1WEEK).content
-    return DataObject(data, 'image/jpeg')
-  except:
-    return Redirect(R(ICON))
-
 ####################################################################################################
 
 def MainMenu():
-  dir = MediaContainer(noCache=True)
+  oc = ObjectContainer(no_cache = True)
 
   regionName = Prefs['youtube_region'].split('/')[0]
   if regionName == 'All':
@@ -102,340 +103,344 @@ def MainMenu():
   else:
     localizedVideosName = L('Videos for ')+ regionName
 
-  dir.Append(Function(DirectoryItem(VideosMenu, localizedVideosName, localizedVideosName)))
-  dir.Append(Function(DirectoryItem(ChannelsMenu, L('Channels'), L('Channels'))))
-  dir.Append(Function(DirectoryItem(MoviesMenu, L('Movies'), L('Movies'))))
-  dir.Append(Function(DirectoryItem(ShowsMenu, L('Shows'), L('Shows'))))    
-  dir.Append(Function(DirectoryItem(LiveMenu, L('Live'), L('Live'))))   
-#  dir.Append(Function(DirectoryItem(VideosMenu, L('* Music'), L('Music'))))
-  dir.Append(Function(DirectoryItem(TrailersMenu, L('Trailers'), L('Trailers'))))  
-  if Dict['loggedIn'] == True:
-    dir.Append(Function(DirectoryItem(MyAccount, L('My Account'), L('My Account'))))  
-  dir.Append(PrefsItem(L('Preferences'), thumb=R('icon-prefs.png')))
-  return dir
+  oc.add(DirectoryObject(key = Callback(VideosMenu, title = localizedVideosName), title = localizedVideosName))
+  oc.add(DirectoryObject(key = Callback(ChannelsMenu, title = L('Channels')), title = L('Channels')))
+  #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
+  #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
+  oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
+  oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
+
+  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+    oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
+
+  oc.add(PrefsObject(title = L('Preferences')))
+
+  return oc
 
 ####################################################################################################
 ## VIDEOS
 ####################################################################################################
 
-def VideosMenu(sender):
-  dir = MediaContainer(title2 = L("Videos"))
-  dir.Append(Function(DirectoryItem(SubMenu, L('Today')), category = 'today'))
-  dir.Append(Function(DirectoryItem(SubMenu, L('This Week'), L('This Week')), category = 'this_week'))
-  dir.Append(Function(DirectoryItem(SubMenu, L('This Month'), L('This Month')), category = 'this_month'))
-  dir.Append(Function(DirectoryItem(SubMenu, L('All Time'), L('All Time')), category = 'all_time'))
-  dir.Append(Function(DirectoryItem(ParseFeed, L('Most Recent')), url=YOUTUBE_STANDARD_MOST_RECENT_URI))
-  dir.Append(Function(InputDirectoryItem(Search, L('Search Videos'), L('Search Videos'), L('Search Videos'), thumb=R('icon-search.png')),SearchType = 'videos'))
-  return dir
+def VideosMenu(title):
+  oc = ObjectContainer(title2 = title)
+  oc.add(DirectoryObject(key = Callback(SubMenu, title = L('Today'), category = 'today'), title = L('Today')))
+  oc.add(DirectoryObject(key = Callback(SubMenu, title = L('This Week'), category = 'this_week'), title = L('This Week'))) 
+  oc.add(DirectoryObject(key = Callback(SubMenu, title = L('This Month'), category = 'this_month'), title = L('This Month'))) 
+  oc.add(DirectoryObject(key = Callback(SubMenu, title = L('All Time'), category = 'all_time'), title = L('All Time'))) 
+  oc.add(DirectoryObject(key = Callback(ParseFeed, title = L('Most Recent'), url = YOUTUBE_STANDARD_MOST_RECENT_URI), title = L('Most Recent'))) 
+  oc.add(InputDirectoryObject(key = Callback(Search, search_type = 'videos', title = L('Search Videos')), title = L('Search Videos'), prompt = L('Search Videos')))
+  return oc
 
 ####################################################################################################
 ## CHANNELS
 ####################################################################################################
 
-def ChannelsMenu(sender):
-  dir = MediaContainer(title2 = L("Channels"))
-  dir.Append(Function(DirectoryItem(ParseChannelFeed, L('Most Viewed')), url=YOUTUBE_CHANNELS_MOSTVIEWED_URI))
-  dir.Append(Function(DirectoryItem(ParseChannelFeed, L('Most Subscribed')), url=YOUTUBE_CHANNELS_MOSTSUBSCRIBED_URI))
-  dir.Append(Function(InputDirectoryItem(Search, L('Search Channels'), L('Search Channels'), L('Search Channels'), thumb=R('icon-search.png')),SearchType = 'channels'))
-  return dir
+def ChannelsMenu(title):
+  oc = ObjectContainer(title2 = title)
 
-####################################################################################################
-## MOVIES
-####################################################################################################
+  oc.add(DirectoryObject(
+    key = Callback(ParseChannelFeed, title = L('Most Viewed'), url = YOUTUBE_CHANNELS_MOSTVIEWED_URI), 
+    title = L('Most Viewed'))) 
+  oc.add(DirectoryObject(
+    key = Callback(ParseChannelFeed, title = L('Most Subscribed'), url = YOUTUBE_CHANNELS_MOSTSUBSCRIBED_URI), 
+    title = L('Most Subscribed'))) 
+  oc.add(InputDirectoryObject(
+    key = Callback(Search, search_type = 'channels', title = L('Search Channels')), 
+    title = L('Search Channels'),
+    prompt = L('Search Channels')))
 
-def MoviesMenu(sender):
-  return MessageContainer("Maintenance"," This section still needs fixing, thanks for your patience, it should just be a few days .....")
-  dir = MediaContainer(title2 = L("Movies"), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/')) 
-  Log(HTML.StringFromElement(HTML.ElementFromURL(YOUTUBE_MOVIES)))
-  Log(HTML.StringFromElement(HTML.ElementFromURL(YOUTUBE_MOVIES).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]")[0]))
-  Log(HTML.StringFromElement(HTML.ElementFromURL(YOUTUBE_MOVIES).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]//div[contains(@class,'slider-title')]//h2/a")[0]))
-  for category in HTML.ElementFromURL(YOUTUBE_MOVIES).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]//div[contains(@class,'slider-title')]//h2/a"):
-    raw_text = category.text.split('»')[0]
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, raw_text.strip()), url=YOUTUBE + category.get('href')))
-  if len(dir) == 0:
-    return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
-
-def MoviesCategoryMenu(sender,url,page=1):
-  dir = MediaContainer(viewGroup='PanelStream',title2 = sender.title2, httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-#  for category in HTML.ElementFromURL(YOUTUBE_MOVIES).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]//div[contains(@class,'browse-item-content')]//h3/a"):
-
-  if page > 1:
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, L("Previous Page ...")), url=url, page = page - 1))
-  pageContent = HTTP.Request(url + '&p='+str(page)).content
-  for movie in HTML.ElementFromString(pageContent).xpath("//div[contains(@class,'browse-content')]//ul[contains(@class, 'browse-item-list')]/li"):
-    if movie.xpath('//span[contains(@class,"item-price") and contains(@class,"free")]'):
-      title = movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a')[0].get('title')
-      movie_page = YOUTUBE +  movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a')[0].get('href')
-      #Log(HTML.StringFromElement(HTML.ElementFromURL(movie_page).xpath('//button[contains(@class,"yt-uix-button-promo")]')[0]))
-      play_button =  HTML.ElementFromURL(movie_page).xpath('//button[contains(@class,"yt-uix-button-promo")]')[0]
-      try:
-        id = play_button.get('data-watch-url').split('v=')[1].split('&')[0]
-      except:
-        id = play_button.get('href').split('v=')[1].split('&amp;')[0]  
-      Log(HTML.StringFromElement(movie))
-      try: 
-        thumb = movie.xpath('.//img[contains(@alt,"Thumbnail")]')[0].get('data-thumb')
-      except:
-        thumb = ICON
-      info = movie.xpath('.//div[@class="info"]')[0]
-      try:
-        duration_str = info.xpath('.//span[@class="duration"]')[0].text
-        duration = GetDurationFromString(duration_str)
-      except:
-        duration = None
-        
-      try: 
-        if Prefs['Submenu'] == True:
-          subtitle = duration_str
-        else: 
-          subtitle = movie.xpath(".//div[@class='details']//p[@class='starring']")[0].text.strip()
-      except:
-        subtitle = ''
-      
-      try:  
-        summary = movie.xpath(".//div[@class='details']//p[@class='description']")[0].text.strip()
-      except: 
-        summary = ''
-      
-      if 'Crackle' in summary:
-        jsondetails = re.findall("(?<='PLAYER_CONFIG':)([^']+);",HTTP.Request('http://www.youtube.com/watch?v='+id).content)
-        if len(jsondetails) >0 :
-          mediaid =  re.findall('(?<="mediaid": ")([^"]+)"',jsondetails[0])[0]
-          dir.Append(WebVideoItem(CRACKLE_URL%mediaid, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
-      else:
-        if Prefs['Submenu'] == True:
-          dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration), video_id=id, title = title))
-        else:
-          dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
-
-  if '>Next<' in pageContent:
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, L("Next Page ...")), url=url, page = page + 1))
-
-  if len(dir) == 0:
-    return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
+  return oc
 
 ####################################################################################################
 ## LIVE
 ####################################################################################################
 
-def LiveMenu(sender,page=1):
-  dir = MediaContainer(viewGroup='PanelStream',title2 = L("Live"), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-#  for category in HTML.ElementFromURL(YOUTUBE_MOVIES).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]//div[contains(@class,'browse-item-content')]//h3/a"):
+def LiveMenu(title):
+  oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
 
-  if page > 1:
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, L("Previous Page ...")), url=url, page = page - 1))
   pageContent = HTTP.Request(YOUTUBE_LIVE).content
-  for movie in HTML.ElementFromString(pageContent).xpath("//div[contains(@id,'live-main')]//li[contains(@class,'yt-uix-slider-slide-item')]"):
-    try:
-      title = movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a[@class="live-video-title"]')[0].text
-    except:
-      title = ""
-      
-    try:
-      id =  movie.xpath('.//div[contains(@class,"browse-item-content")]//h3/a')[0].get('href').split('/')[-1]
-    except:
-      id = ""
+  page = page = HTML.ElementFromString(pageContent)
+  for movie in page.xpath("//div[contains(@id,'live-main')]//li[contains(@class,'yt-uix-slider-slide-item')]"):
+
+    video_url =  movie.xpath('.//h3/a')[0].get('href')
+    if video_url.startswith(YOUTUBE) == False:
+      video_url = YOUTUBE + video_url
   
-    Log(id)
+    title = movie.xpath('.//a[@class = "yt-uix-tile-link"]')[0].get('title')
   
-    try: 
-      thumb = movie.xpath('.//img[@alt="Thumbnail"]')[0].get('src')
-    except:
-      thumb = ICON
-      
-    if not 'http://' in thumb:
-      thumb = 'http:' + thumb
-    
-    subtitle = ''
-    duration = None
-      
-    try:  
-      summary = movie.xpath(".//div[@class='details']//p[@class='description']")[0].text.strip()
-    except: 
-      summary = ''
-      
-    if 'Crackle' in summary:
-      jsondetails = re.findall("(?<='PLAYER_CONFIG':)([^']+);",HTTP.Request('http://www.youtube.com/watch?v='+id).content)
-      if len(jsondetails) >0 :
-        mediaid =  re.findall('(?<="mediaid": ")([^"]+)"',jsondetails[0])[0]
-        dir.Append(WebVideoItem(CRACKLE_URL%mediaid, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
-    else:
-      if Prefs['Submenu'] == True:
-        dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration), video_id=id, title = title))
-      else:
-        dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = Function(Thumb, url=thumb), subtitle = subtitle, summary = summary, duration = duration))
+    thumb = ICON
+    try: thumb = movie.xpath('.//img[contains(@alt, "Thumbnail")]')[0].get('src')
+    except: pass
 
-  if '>Next<' in pageContent:
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, L("Next Page ...")), url=url, page = page + 1))
-
-  if len(dir) == 0:
-    return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
-
-
-####################################################################################################
-## SHOWS
-####################################################################################################
-
-def ShowsMenu(sender):
-  return MessageContainer("Maintenance"," This section still needs fixing, thanks for your patience, it should just be a few days .....")
-  dir = MediaContainer(title2 = L("Shows")) 
-  for category in HTML.ElementFromURL(YOUTUBE_SHOWS).xpath("//div[contains(@class,'browse-content')]//div[contains(@class, 'browse-collection')]//div[contains(@class,'slider-title')]//h2/a"):
-    raw_text = category.text.split('»')[0]
-    dir.Append(Function(DirectoryItem(MoviesCategoryMenu, raw_text.strip()), url=YOUTUBE + category.get('href')))
-  if len(dir) == 0:
-    return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
-
-def ShowsCategoryMenu(sender,url,page=1):
-  dir = MediaContainer(viewGroup='PanelStream',title2 = sender.title2)
-
-  if page > 1:
-    dir.Append(Function(DirectoryItem(ShowsCategoryMenu, L("Previous Page ...")), url=url, page = page - 1))
-
-  pageContent = HTTP.Request(url+'?p='+str(page)).content
-  for show in HTML.ElementFromString(pageContent).xpath("//div[contains(@class,'show-cell')]"):
-    title = show.xpath('.//h3')[0].text.strip()
-    link = YOUTUBE + show.xpath('.//a')[0].get('href')
-    thumb = show.xpath('.//span[@class="clip"]/img')[0].get('src')
-    dir.Append(Function(DirectoryItem(ShowsVideos, title, thumb = Function(Thumb, url=thumb)), url=link,thumb = thumb))
-
-  if '>Next<' in pageContent:
-    dir.Append(Function(DirectoryItem(ShowsCategoryMenu, L("Next Page ...")), url=url, page = page + 1))
-
-  if len(dir) == 0:
-    return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
-
-def ShowsVideos(sender,url,thumb):
-  dir = MediaContainer(viewGroup='InfoList',title2 = sender.title2, httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-
-  for episode in HTML.ElementFromURL(url).xpath("//tbody/tr"):
-    title = episode.xpath('./td[3]//h3')[0].text.strip()
-    id = episode.xpath('./td[3]//a')[0].get('href').split('v=')[1]
-    duration = GetDurationFromString(episode.xpath('./td[3]//p[@class="info"]')[0].text.strip())
-    summary = episode.xpath('./td[3]//p[@class="description"]')[0].text.strip()
-    try: 
-      subtitle =  L('Air date : ') + episode.xpath('./td[5]')[0].text.strip()
-    except:
-      subtitle = ''
-      
     if Prefs['Submenu'] == True:
-      dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title, thumb = thumb, subtitle = subtitle, summary = summary, duration = duration), video_id=id, title = title))
+      oc.add(DirectoryObject(
+        key = Callback(
+          VideoSubMenu, 
+          title = title, 
+          video_id = None,
+          video_url = video_url,
+          thumb = thumb), 
+        title = title,
+        thumb = Callback(GetThumb, url = thumb)))
     else:
-      dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = thumb, subtitle = subtitle, summary = summary, duration = duration))
+      oc.add(VideoClipObject(
+        url = video_url,
+        title = title,
+        thumb = Callback(GetThumb, url = thumb)))
 
-  if len(dir) == 0:
+  if len(oc) == 0:
     return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
+
+  return oc
 
 ####################################################################################################
 ## TRAILERS
 ####################################################################################################
 
-def TrailersMenu(sender):
-  dir = MediaContainer(title2 = L("Trailers")) 
-  for category in HTML.ElementFromURL(YOUTUBE_TRAILERS).xpath("//div[@class='trailer-list']/preceding-sibling::h3/a"):
-    dir.Append(Function(DirectoryItem(TrailersVideos, category.text.strip()), url=YOUTUBE + category.get('href')))
-  if len(dir) == 0:
+def TrailersMenu(title):
+  oc = ObjectContainer(title2 = title)
+
+  page = HTML.ElementFromURL(YOUTUBE_TRAILERS)
+  categories = page.xpath("//div[@class='trailer-list']/preceding-sibling::h3/a")
+  for category in categories:
+    title = category.text.strip()
+    oc.add(DirectoryObject(
+      key = Callback(TrailersVideos, title = title, url = YOUTUBE + category.get('href')),
+      title = title))
+
+  if len(oc) == 0:
     return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
 
-def GetSummary(videoid):
-  try:
-    details = JSON.ObjectFromURL(YOUTUBE_VIDEO_DETAILS%videoid)
-    summary = str(details['entry']['media$group']['media$description']['$t'])
-    return summary.split("!expres")[0]
-  except:
-    return ''
+  return oc
 
-def TrailersVideos(sender,url,page=1):
-#  menu = ContextMenu(includeStandardItems=False)
-#  menu.Append(Function(VideoItem(PlayVideo,L('Play Video'))))
-#  menu.Append(Function(DirectoryItem(SetAsFavorite, L('Mark As Favorite'), '')))  
-#  menu.Append(Function(DirectoryItem(ParseFeed, L('View Related'), ''),url=''))
-  
-  dir = MediaContainer(viewGroup='PanelStream',title2 = sender.title2, httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))#, contextMenu=menu, noCache=True)
+def TrailersVideos(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
 
-  if page > 1:
-    dir.Append(Function(DirectoryItem(TrailersVideos, L("Previous Page ...")), url=url, page = page - 1))
+  page_content = HTTP.Request(url+'&p='+str(page)).content
+  page = HTML.ElementFromString(page_content)
+  for trailer in page.xpath("//div[contains(@class,'trailer-cell')]"):
 
-  pageContent = HTTP.Request(url+'&p='+str(page)).content
-  for trailer in HTML.ElementFromString(pageContent).xpath("//div[contains(@class,'trailer-cell')]"):
-    id = trailer.xpath('.//div[@class="trailer-title"]/div[@class="trailer-short-title"]/a')[0].get('href').split('v=')[1]
+    video_url = YOUTUBE + trailer.xpath('.//a')[0].get('href')
+    title = trailer.xpath('.//div[@class="trailer-short-title"]/a/text()')[0].strip()
+    thumb = trailer.xpath('.//img')[0].get('data-thumb')
+    summary = trailer.xpath('.//div[@class = "video-description"]/text()')[0].strip()
 
-    title = trailer.xpath('.//div[@class="trailer-title"]/div[@class="trailer-short-title"]/a')[0].text.strip()
-    thumb = trailer.xpath('.//span[@class="clip"]/img')[0].get('src')
-
+    # [Optional]
     try:
-      summary = trailer.xpath('.//p[@class="description"]')[0].text.strip()
+      date = trailer.xpath('.//span[contains(@class, "video-release-date")]/text()')[0].strip()
+      date = date.replace('Opened', '').strip()
+      date = Datetime.ParseDate(date)
     except:
-      summary = ''
-    try:
-      subtitle = trailer.xpath('.//span[contains(@class,"video-release-date")]')[0].text.strip()
-    except:
-      subtitle = ''
+      date = None
+      pass
 
-    #duration = str(details['entry']['media$group']['yt$duration'])*1000
-    duration = 0 # possible future addition
     if Prefs['Submenu'] == True:
-#      dir.Append(Function(DirectoryItem(VideoSubMenu, title=title, contextKey=id, contextArgs={}), video_id=id, title = title))
-      dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title=title, thumb = thumb, subtitle = subtitle, summary = summary, duration = duration), video_id=id, title = title))
+      oc.add(DirectoryObject(
+        key = Callback(
+          VideoSubMenu, 
+          title = title, 
+          video_id = None,
+          video_url = video_url,
+          summary = summary,
+          thumb = thumb), 
+        title = title,
+        summary = summary,
+        thumb = Callback(GetThumb, url = thumb)))
     else:
-      dir.Append(VideoItem(Route(PlayVideo, video_id=id), title, thumb = thumb, subtitle = subtitle, summary = summary, duration = duration))
+      oc.add(VideoClipObject(
+        url = video_url,
+        title = title,
+        thumb = Callback(GetThumb, url = thumb),
+        summary = summary,
+        originally_available_at = date))
 
-  if '>Next<' in pageContent:
-    dir.Append(Function(DirectoryItem(TrailersVideos, L("Next Page ...")), url=url, page = page + 1))
+  if '>Next<' in page_content:
+    oc.add(DirectoryObject(
+      key = Callback(TrailersVideos, title = title, url = url, page = page + 1),
+      title = L("Next Page ...")))
 
-  if len(dir) == 0:
+  if len(oc) == 0:
     return MessageContainer("Empty", "There aren't any items")
-  else:
-    return dir
+
+  return oc
 
 ####################################################################################################
 ## MY ACCOUNT
 ####################################################################################################
 
-def MyAccount(sender):
+def MyAccount(title):
 
   Authenticate()
 
-  dir = MediaContainer()
-  dir.Append(Function(DirectoryItem(ParseFeed, L('My Videos')), url=YOUTUBE_USER_VIDEOS % 'default'))
-  dir.Append(Function(DirectoryItem(ParseFeed, L('My Favorites')), url=YOUTUBE_USER_FAVORITES % 'default'))
-  dir.Append(Function(DirectoryItem(ParsePlaylists, L('My Playlists')), url=YOUTUBE_USER_PLAYLISTS % 'default'))
-  dir.Append(Function(DirectoryItem(ParseSubscriptions, L('My Subscriptions')), url=YOUTUBE_USER_SUBSCRIPTIONS % 'default'))
-  dir.Append(Function(DirectoryItem(MyContacts, L('My Contacts')), url=YOUTUBE_USER_CONTACTS % 'default'))
-  return dir 
+  oc = ObjectContainer(title2 = title)
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = L('My Videos'), url = YOUTUBE_USER_VIDEOS % 'default'),
+    title = L('My Videos')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = L('My Favorites'), url = YOUTUBE_USER_FAVORITES % 'default'),
+    title = L('My Favorites')))
+  oc.add(DirectoryObject(
+    key = Callback(ParsePlaylists, title = L('My Playlists'), url = YOUTUBE_USER_PLAYLISTS % 'default'),
+    title = L('My Playlists')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
+    title = L('My Subscriptions')))
+  oc.add(DirectoryObject(
+    key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
+    title = L('My Contacts')))
+
+  return oc
    
-def MyContacts(sender,url):
-  dir = MediaContainer(viewGroup='InfoList', httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-  Page = JSON.ObjectFromURL(url, encoding='utf-8')
-  if Page['feed']['openSearch$totalResults'] == 0:
-    dir = MessageContainer(L("Error"), L("You have no contacts"))
+def MyContacts(title, url):
+  oc = ObjectContainer(title2 = title)
+  contacts_page = JSON.ObjectFromURL(url, encoding='utf-8')
+  if contacts_page['feed']['openSearch$totalResults']['$t'] == 0:
+    oc = MessageContainer(L("Error"), L("You have no contacts"))
   else:
-    for contact in Page['feed']['entry']: 
+    for contact in contacts_page['feed']['entry']:
       if contact.has_key('yt$status') and contact['yt$status']['$t'] == 'accepted':
         username = contact['yt$username']['$t'].strip()
-        dir.Append(Function(DirectoryItem(ContactPage, username), username=username))
-  return dir 
-  
-def ContactPage(sender, username):
-  dir = MediaContainer(viewGroup='InfoList', httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-  dir.Append(Function(DirectoryItem(ParseFeed, username+L('\'s uploads')), url=YOUTUBE_OTHER_USER_FEED%username))
-  dir.Append(Function(DirectoryItem(ParseFeed, username+L('\'s favorites')), url=YOUTUBE_USER_FAVORITES%username))
-#  dir.Append(Function(DirectoryItem(ParseSubscriptions, username+L('\'s subscriptions')), url=YOUTUBE_USER_SUBSCRIPTIONS%username))
-  dir.Append(Function(DirectoryItem(ParsePlaylists, username+L('\'s playlists')), url=YOUTUBE_USER_PLAYLISTS%username))
-  return dir
+        oc.add(DirectoryObject(key = Callback(ContactPage, username = username), title = username))
+
+  return oc
+
+def ContactPage(username):
+  oc = ObjectContainer()
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s uploads'), url = YOUTUBE_OTHER_USER_FEED % username),
+    title = username + L('\'s uploads')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s favorites'), url = YOUTUBE_USER_FAVORITES % username),
+    title = username + L('\'s favorites')))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = username + L('\'s playlists'), url = YOUTUBE_USER_PLAYLISTS % username),
+    title = username + L('\'s playlists')))
+  return oc
+
+####################################################################################################
+## SHOWS
+####################################################################################################
+
+def ShowsMenu(title):
+  oc = ObjectContainer(title2 = title)
+
+  page = HTML.ElementFromURL(YOUTUBE_SHOWS)
+  categories = page.xpath("//div[contains(@class, 'slider-title')]//a")
+  for category in categories:
+
+    # We currently don't support 'Catchup'
+    url = YOUTUBE + category.get('href')
+    if url.find('shows?') > -1:
+      continue
+
+    title = category.text.split('»')[0].strip()
+    oc.add(DirectoryObject(
+      key = Callback(ShowsCategoryMenu, title = title, url = YOUTUBE + category.get('href')),
+      title = title))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+def ShowsCategoryMenu(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+
+  page_content = HTTP.Request(url + '?p=' + str(page)).content
+  page = HTML.ElementFromString(page_content)
+  for show in page.xpath("//ul[@class='browse-item-list']//div[contains(@class, 'show-item')]"):
+
+    title = show.xpath('.//h3/a//text()')[0].strip()
+    link = YOUTUBE + show.xpath('.//a')[0].get('href')
+    summary = show.xpath('//div[@class = "details"]/text()')[0].strip()
+
+    thumb = R(ICON)
+    try: thumb = show.xpath('.//img')[0].get('src')
+    except: pass
+
+    oc.add(DirectoryObject(
+      key = Callback(ShowSeasons, title = title, url = link, thumb = thumb),
+      title = title,
+      summary = summary,
+      thumb = Callback(GetThumb, url = thumb)))
+
+  if '>Next<' in page_content:
+    oc.add(DirectoryObject(
+      key = Callback(ShowsCategoryMenu, title = title, url = url, page = page + 1),
+      title = L("Next Page ...")))
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
+def ShowSeasons(title, url, thumb):
+
+  page = HTML.ElementFromURL(url)
+  single_season = len(page.xpath("//div[@class='seasons-label only-season']")) == 1
+  if (single_season):
+    return ShowsVideos(title, url, thumb)
+
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+  seasons = page.xpath("//div[contains(@class, 'season')]//span/button")
+  for season in seasons:
+    season_title = "Season %s" % season.get('data-season-number')
+    season_url = YOUTUBE + season.get('data-clips-url')
+    oc.add(DirectoryObject(
+      key = Callback(ShowsVideos, title = title, url = season_url, thumb = thumb),
+      title = season_title,
+      thumb = thumb))
+
+  return oc
+
+def ShowsVideos(title, url, thumb):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+
+  page = HTML.ElementFromURL(url)
+
+  selected_season = page.xpath("//div[contains(@class, 'season')]//span/button[contains(@class, 'toggled')]")[0]
+  ajax_url = YOUTUBE + selected_season.get('data-episodes-ajax-url')
+
+  while(True):
+    ajax_source = JSON.ObjectFromURL(ajax_url)
+    ajax_data = HTML.ElementFromString(ajax_source['videos_html'])
+
+    videos = ajax_data.xpath("//div[contains(@class, 'entity-video-item ')]")
+    for video in videos:
+      title = video.xpath('./div//a')[0].get('title')
+      video_url = YOUTUBE + video.xpath('./div//a')[0].get('href')
+      summary = video.xpath('./div//p[@dir="ltr"]/text()')[0].strip()
+      thumb = "http:" + video.xpath('.//img')[0].get('src')
+
+      if Prefs['Submenu'] == True:
+        oc.add(DirectoryObject(
+          key = Callback(
+            VideoSubMenu, 
+            title = title, 
+            video_id = None,
+            video_url = video_url,
+            summary = summary,
+            thumb = thumb), 
+          title = title,
+          summary = summary,
+          thumb = Callback(GetThumb, url = thumb)))
+      else:
+        oc.add(VideoClipObject(
+          url = video_url,
+          title = title,
+          thumb = Callback(GetThumb, url = thumb),
+          summary = summary))
+
+    # We will continue to loop, until we have found all available videos
+    if ajax_source['show_more'] == None:
+      break
+    ajax_url = ajax_source['show_more']
+
+  if len(oc) == 0:
+    return MessageContainer("Empty", "There aren't any items")
+
+  return oc
+
 
 ####################################################################################################
 ## AUTHENTICATION
@@ -445,7 +450,7 @@ def Authenticate():
 
   # Only when username and password are set
   if Prefs['youtube_user'] and Prefs['youtube_passwd']:
-    if Dict['Session'] :
+    if 'Session' in Dict:
       try:
         req = HTTP.Request('https://www.youtube.com/', values=dict(
             session_token = Dict['Session'],
@@ -466,65 +471,59 @@ def Authenticate():
         if 'Auth=' in keys:
           AuthToken = keys.replace("Auth=",'')
           HTTP.Headers['Authorization'] = "GoogleLogin auth="+AuthToken
-          Dict['loggedIn']=True
+          Dict['loggedIn'] = True
           Log("Login Sucessful")
         if 'SID=' in keys:
           Dict['Session'] = keys.replace("SID=",'')
 
-
-         # userprofile = JSON.ObjectFromUrl('http://gdata.youtube.com/feeds/api/users/default?alt=json")
-         # Dict['username'] = userprofile['entry']['yt$username']
     except:
-      Dict['loggedIn']=False
+      Dict['loggedIn'] = False
       Log.Exception("Login Failed")
 
   return True
 
 ####################################################################################################
 
-def SubMenu(sender, category):
-  dir = MediaContainer()
-  dir.Append(Function(DirectoryItem(ParseFeed, L('Most Viewed')), url=YOUTUBE_STANDARD_MOST_VIEWED_URI+'?time=%s' % (category)))
-  dir.Append(Function(DirectoryItem(ParseFeed, L('Top Rated')), url=YOUTUBE_STANDARD_TOP_RATED_URI+'?time=%s' % (category)))
-  dir.Append(Function(DirectoryItem(ParseFeed, L('Most Discussed')), url=YOUTUBE_STANDARD_MOST_DISCUSSED_URI+'?time=%s' % (category)))
-  return dir
+def SubMenu(title, category):
+  oc = ObjectContainer(title2 = title)
+
+  oc.add(DirectoryObject(
+    key = Callback(
+      ParseFeed, 
+      title = L('Most Viewed'), 
+      url = YOUTUBE_STANDARD_MOST_VIEWED_URI + '?time=%s' % category), 
+    title = L('Most Viewed')))
+  oc.add(DirectoryObject(
+    key = Callback(
+      ParseFeed, 
+      title = L('Top Rated'), 
+      url = YOUTUBE_STANDARD_TOP_RATED_URI + '?time=%s' % category), 
+    title = L('Top Rated')))
+  oc.add(DirectoryObject(
+    key = Callback(
+      ParseFeed, 
+      title = L('Most Discussed'), 
+      url = YOUTUBE_STANDARD_MOST_DISCUSSED_URI + '?time=%s' % category), 
+    title = L('Most Discussed')))
+
+  return oc
 
 ####################################################################################################
 
-def Search(sender, SearchType = 'videos', query=''):
-  dir = MediaContainer()
-  if SearchType == 'videos':
-    dir = ParseFeed(url=YOUTUBE_QUERY % (SearchType,String.Quote(query, usePlus=False)))
+def Search(query, title = '', search_type = 'videos'):
+
+  url = YOUTUBE_QUERY % (search_type, String.Quote(query, usePlus = False))
+  if search_type == 'videos':
+    return ParseFeed(title = title, url = url)
   else:
-    dir = ParseChannelSearch(url=YOUTUBE_QUERY % (SearchType,String.Quote(query, usePlus=False)))
-  return dir
+    return ParseChannelSearch(title = title, url = url)
+
+  return oc
 
 ####################################################################################################
+def CleanString(string):
+  return String.StripTags(string).replace('&amp;','&')
 
-def GetDurationFromString(duration):
-
-  try:
-    durationArray = duration.split(":")
-
-    if len(durationArray) == 3:
-      hours = int(durationArray[0])
-      minutes = int(durationArray[1])
-      seconds = int(durationArray[2])
-    elif len(durationArray) == 2:
-      hours = 0
-      minutes = int(durationArray[0])
-      seconds = int(durationArray[1])
-    elif len(durationArray)  ==  1:
-      hours = 0
-      minutes = 0
-      seconds = int(durationArray[0])
-
-    return int(((hours)*3600 + (minutes*60) + seconds)*1000)
-
-  except:
-    return 0  
-
-####################################################################################################
 def AddJSONSuffix(url):
   if '?' in url:
     return url + '&alt=json'
@@ -534,351 +533,393 @@ def AddJSONSuffix(url):
 def Regionalize(url):
   regionid = Prefs['youtube_region'].split('/')[1]
   if regionid == 'ALL':
-    return  url.replace('/REGIONID','')
+    return  url.replace('/REGIONID', '')
   else:
-    return url.replace('/REGIONID','/'+regionid) 
+    return url.replace('/REGIONID', '/' + regionid) 
 
-def check_rejected_entry(entry):
-  if 'app$control' in entry : 
-    if 'yt$state' in entry['app$control']:
-      if 'name' in entry['app$control']['yt$state']:
-        if entry['app$control']['yt$state']['name'] == 'rejected':
-          Log("REJECTED A VIDEO")
-          return True
-        else:
-          return False
-      else:
-        return False
-    else:
-      return False
-  else:
+def CheckRejectedEntry(entry):
+  try:
+    return entry['app$control']['yt$state']['name'] == 'rejected'
+  except:
     return False
 
+def ParseFeed(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
 
-def ParseFeed(sender=None, url='', page=1):
-  HTTP.ClearCookies()
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-
-  Localurl = AddJSONSuffix(url)
-  Localurl = Regionalize(Localurl +'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS))
+  # Construct the appropriate URL
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  local_url = Regionalize(local_url)
 
   try:
-    rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-    
-    if rawfeed['feed'].has_key('openSearch$totalResults'):
-      need_previous = not (page == 1)
-      need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
-      
-    if (need_previous):
-      dir.Append(Function(DirectoryItem(ParseFeed, title="Previous"), url=url,page = page-1))
 
+    rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
     if rawfeed['feed'].has_key('entry'):
       for video in rawfeed['feed']['entry']:
-        if video.has_key('yt$videoid'):
-          video_id = video['yt$videoid']['$t']
-        else:
-          if video['media$group'].has_key('media$player'):
-            try:
-              video_page = video['media$group']['media$player'][0]['url']
-            except:
-              video_page = video['media$group']['media$player']['url']
-            video_id = re.search('v=([^&]+)', video_page).group(1).split('&')[0]
-          else:
-            video_id = None      
-          title = video['title']['$t']
 
-        if (video_id != None) and not(check_rejected_entry(video)):
-	      try:
-	        published = Datetime.ParseDate(video['published']['$t']).strftime('%a %b %d, %Y')
-	      except: 
-	        published = Datetime.ParseDate(video['updated']['$t']).strftime('%a %b %d, %Y')
-	      if video.has_key('content') and video['content'].has_key('$t'):
-	        summary = video['content']['$t']
-	      else:
-	        summary = video['media$group']['media$description']['$t']
-	      summary = summary.split('!express')[0]
-	    
-	      duration = int(video['media$group']['yt$duration']['seconds']) * 1000
-	      try:
-	        rating = float(video['gd$rating']['average']) * 2
-	      except:
-	        rating = None
-	      thumb = video['media$group']['media$thumbnail'][0]['url']
-	      
-        if Prefs['Submenu'] == True:
-          dir.Append(Function(PopupDirectoryItem(VideoSubMenu, title=title, subtitle=published, summary=summary, duration=duration, rating=rating, thumb=Function(Thumb, url=thumb)), video_id=video_id, title = title))
-        else:
-          dir.Append(VideoItem(Route(PlayVideo, video_id=video_id), title=title, subtitle=published, summary=summary, duration=duration, rating=rating, thumb=Function(Thumb, url=thumb)))
+        # If the video has been rejected, ignore it.
+        if CheckRejectedEntry(video):
+          continue
 
-      if (need_next):
-        dir.Append(Function(DirectoryItem(ParseFeed, title="Next"), url=url,page = page+1))
+        # Determine the actual HTML URL associated with the view. This will allow us to simply redirect
+        # to the associated URL Service, when attempting to play the content.
+        video_url = None
+        for video_links in video['link']:
+          if video_links['type'] == 'text/html':
+            video_url = video_links['href']
+            break
+
+        # This is very unlikely to occur, but we should at least log.
+        if video_url is None:
+          Log('Found video that had no URL')
+          continue
+
+        # As well as the actual video URL, we need the associate id. This is required if the user wants
+        # to see related content.
+        video_id = None
+        try: video_id = re.search('v=([^&]+)', video_url).group(1).split('&')[0]
+        except: pass
+
+        title = video['media$group']['media$title']['$t']
+        thumb = video['media$group']['media$thumbnail'][0]['url']
+        duration = int(video['media$group']['yt$duration']['seconds']) * 1000
+
+        summary = None
+        try: summary = video['media$group']['media$description']['$t']
+        except: pass
+
+        # [Optional]
+        rating = None
+        try: rating = float(video['gd$rating']['average']) * 2
+        except: pass
+          
+        # [Optional]
+        date = None
+        try: date = Datetime.ParseDate(video['published']['$t'].split('T')[0])
+        except:
+          try: date = Datetime.ParseDate(video['updated']['$t'].split('T')[0])
+          except: pass
+
+        if Prefs['Submenu'] == True and video_id is not None:
+          oc.add(DirectoryObject(
+            key = Callback(
+              VideoSubMenu, 
+              title = title, 
+              video_id = video_id,
+              video_url = video_url, 
+              summary = summary,
+              thumb = thumb,
+              originally_available_at = date,
+              rating = rating),
+            title = title,
+            summary = summary,
+            thumb = Callback(GetThumb, url = thumb)))
+        else:
+          oc.add(VideoClipObject(
+            url = video_url,
+            title = title,
+            summary = summary,
+            thumb = Callback(GetThumb, url = thumb),
+            originally_available_at = date,
+            rating = rating))
+
+      # Check to see if there are any futher results available.
+      if rawfeed['feed'].has_key('openSearch$totalResults'):
+        total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+        items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+        start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+        if (start_index + items_per_page) < total_results:
+          oc.add(DirectoryObject(
+            key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+            title = 'Next'))
+
   except:
+    Log.Exception("Error")
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
 
-  if len(dir) == 0:
+  if len(oc) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
   else:
-    return dir
+    return oc
 
-def ParseSubscriptionFeed(sender=None, url='',page=1):
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
+def ParseSubscriptionFeed(title, url = '',page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
 
-  Localurl = AddJSONSuffix(url)
-  Localurl = Regionalize(Localurl +'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS))
- 
-  rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-  
-  if rawfeed['feed'].has_key('openSearch$totalResults'):
-    need_previous = not (page == 1)
-    need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
-      
-  if (need_previous):
-    dir.Append(Function(DirectoryItem(ParseSubscriptionFeed, title="Previous"), url=url,page = page-1))
+  # Construct the appropriate URL
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  local_url = Regionalize(local_url)
 
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
   for video in rawfeed['feed']['entry']:
     if ('events?' in url) and ('video' in video['category'][1]['term']):
-		for details in video['link'][1]['entry']:
-		  if details.has_key('yt$videoid'):
-		    video_id = details['yt$videoid']['$t']
-		  elif details['media$group'].has_key('media$player'):
-			try:
-			  video_page = details['media$group']['media$player'][0]['url']
-			except:
-			  video_page = details['media$group']['media$player']['url']
-			video_id = re.search('v=([^&]+)', video_page).group(1)
-		  else:
-		    video_id = None
-		  title = details['title']['$t']
+      for details in video['link'][1]['entry']:
+        if details.has_key('yt$videoid'):
+          video_id = details['yt$videoid']['$t']
+        elif details['media$group'].has_key('media$player'):
+          try:
+            video_page = details['media$group']['media$player'][0]['url']
+          except:
+            video_page = details['media$group']['media$player']['url']
+            video_id = re.search('v=([^&]+)', video_page).group(1)
+        else:  
+          video_id = None
 
-		  if (video_id != None) and not(video.has_key('app$control')):
-		    try:
-			  published = Datetime.ParseDate(details['published']['$t']).strftime('%a %b %d, %Y')
-		    except: 
-		      published = Datetime.ParseDate(details['updated']['$t']).strftime('%a %b %d, %Y')
+        video_title = details['title']['$t']
 
-		    try: 
-			  summary = details['content']['$t']
-		    except:
-			  summary = details['media$group']['media$description']['$t']
-		    summary = summary.split('!express')[0]
-		      
-		    duration = int(details['media$group']['yt$duration']['seconds']) * 1000
+        if (video_id != None) and not(video.has_key('app$control')):
+          video_url = YOUTUBE_VIDEO_PAGE % video_id
 
-		    try:
-			  rating = float(details['gd$rating']['average']) * 2
-		    except:
-			  rating = None
+          try:
+            date = Datetime.ParseDate(details['published']['$t'].split('T')[0])
+          except: 
+            date = Datetime.ParseDate(details['updated']['$t'].split('T')[0])
 
-		    thumb = details['media$group']['media$thumbnail'][0]['url']
- 
-		    if Prefs['Submenu'] == True:
-		      dir.Append(Function(PopupDirectoryItem(VideoSubMenu,  title=title, subtitle=published, summary=summary, duration=duration, rating=rating, thumb=Function(Thumb, url=thumb)), video_id=video_id, title = title))
-		    else:
-		      dir.Append(VideoItem(Route(PlayVideo, video_id=video_id), title=title, subtitle=published, summary=summary, duration=duration, rating=rating, thumb=Function(Thumb, url=thumb)))
-	
-  if len(dir) == 0:
-    return MessageContainer(L('Error'), L('This query did not return any result'))
+          try: 
+            summary = details['content']['$t']
+          except:
+            summary = details['media$group']['media$description']['$t']
+            summary = summary.split('!express')[0]
+
+          duration = int(details['media$group']['yt$duration']['seconds']) * 1000
+
+          try:
+            rating = float(details['gd$rating']['average']) * 2
+          except:
+            rating = None
+
+          thumb = details['media$group']['media$thumbnail'][0]['url']
+
+          if Prefs['Submenu'] == True and video_id is not None:
+            oc.add(DirectoryObject(
+              key = Callback(
+                VideoSubMenu, 
+                title = video_title, 
+                video_id = video_id,
+                video_url = video_url, 
+                summary = summary,
+                thumb = thumb,
+                originally_available_at = date,
+                rating = rating),
+              title = video_title,
+              summary = summary,
+              thumb = Callback(GetThumb, url = thumb)))
+          else:
+            oc.add(VideoClipObject(
+              url = video_url,
+              title = video_title,
+              summary = summary,
+              thumb = Callback(GetThumb, url = thumb),
+              originally_available_at = date,
+              rating = rating))
+
+        # Check to see if there are any futher results available.
+        if rawfeed['feed'].has_key('openSearch$totalResults'):
+          total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+          items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+          start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+          if (start_index + items_per_page) < total_results:
+            oc.add(DirectoryObject(
+              key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+              title = 'Next'))
+
+  if len(oc) == 0:
+    return MessageContainer(L('Error'), L('This feed does not contain any video'))
   else:
-    if (need_next):
-      dir.Append(Function(DirectoryItem(ParseSubscriptionFeed, title="Next"), url=url,page = page+1))
-    return dir
+    return oc
 
-def ParseChannelFeed(sender=None, url='',page=1):
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
+def ParseChannelFeed(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
 
-  Localurl = AddJSONSuffix(url)
-  Localurl = Regionalize(Localurl +'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS))
+  # Construct the appropriate URL
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+  local_url = Regionalize(local_url)
 
-  rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-  if rawfeed['feed'].has_key('openSearch$totalResults'):
-    need_previous = not (page == 1)
-    need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
-      
-  if (need_previous):
-    dir.Append(Function(DirectoryItem(ParseChannelFeed, title="Previous"), url=url,page = page-1))
-
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
+
       feedpage = video['author'][0]['uri']['$t']+'?v=2&alt=json'
-      videos = JSON.ObjectFromURL(feedpage, encoding='utf-8')['entry']['gd$feedLink']
-      for vid in videos:
-        if 'upload' in vid['rel']:
-          link = vid['href']
+
       title = video['title']['$t']
       summary = video['summary']['$t']
       thumb = video['media$group']['media$thumbnail'][0]['url']
-      dir.Append(Function(DirectoryItem(ParseFeed, title=title, summary=summary, thumb=Function(Thumb, url=thumb)), url=link))
+      oc.add(DirectoryObject(
+        key = Callback(ParsePreFeed, title = title, feedpage = feedpage),
+        title = title,
+        summary = summary,
+        thumb = Callback(GetThumb, url = thumb)))
 
-  if len(dir) == 0:
+    # Check to see if there are any futher results available.
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+          title = 'Next'))
+
+  if len(oc) == 0:
     return MessageContainer(L('Error'), L('This query did not return any result'))
   else:
-    if (need_next):
-      dir.Append(Function(DirectoryItem(ParseChannelFeed, title="Next"), url=url,page = page+1))
-    return dir
-    
-def ParseChannelSearch(sender=None, url='',page=1):
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
+    return oc
 
-  Localurl = AddJSONSuffix(url)+'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS)
-
-  rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-  if rawfeed['feed'].has_key('openSearch$totalResults'):
-    need_previous = not (page == 1)
-    need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
+def ParsePreFeed(title, feedpage):
+  videos = JSON.ObjectFromURL(feedpage, encoding='utf-8')['entry']['gd$feedLink']
+  for vid in videos:
+    if 'upload' in vid['rel']:
+      link = vid['href']
       
-  if (need_previous):
-    dir.Append(Function(DirectoryItem(ParseChannelSearch, title="Previous"), url=url,page = page-1))
+  return ParseFeed(title, url = link)
 
+def ParseChannelSearch(title, url, page = 1):
+  oc = ObjectContainer(view_group = 'InfoList', replace_parent = (page > 1))
+
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
+
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['gd$feedLink'][0]['href']
-      title = video['title']['$t']
-      summary = video['summary']['$t']
-      thumb = JSON.ObjectFromURL(YOUTUBE_USER_PROFILE % video['author'][0]['name']['$t'], encoding='utf-8')['entry']['media$thumbnail']['url']
-      dir.Append(Function(DirectoryItem(ParseFeed, title=title, summary=summary, thumb=Function(Thumb, url=thumb)), url=link))
+      title = CleanString(video['title']['$t'])
+      summary = CleanString(video['summary']['$t'])
+      author = video['author'][0]['name']['$t']
 
-  if len(dir) == 0:
-    return MessageContainer(L('Error'), L('This query did not return any result'))
+      oc.add(DirectoryObject(
+        key = Callback(ParseFeed, title = title, url = link),
+        title = title,
+        thumb = Callback(GetUserThumb, user = author)))
+
+    # Check to see if there are any futher results available.
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseChannelSearch, title = title, url = url, page = page + 1), 
+          title = 'Next'))
+
+  if len(oc) == 0:
+    return MessageContainer(L('Error'), L('This feed does not contain any video'))
   else:
-    if (need_next):
-      dir.Append(Function(DirectoryItem(ParseChannelSearch, title="Next"), url=url,page = page+1))
-    return dir
+    return oc
 
-def ParsePlaylists(sender=None, url='',page=1):
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
+def ParsePlaylists(title, url, page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
 
-  Localurl = AddJSONSuffix(url)+'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS)
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
   
-  rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-  if rawfeed['feed'].has_key('openSearch$totalResults'):
-    need_previous = not (page == 1)
-    need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
-      
-  if (need_previous):
-    dir.Append(Function(DirectoryItem(ParsePlaylists, title="Previous"), url=url,page = page-1))
-
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  Log(JSON.StringFromObject(rawfeed))
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['content']['src']
       title = video['title']['$t']
       summary = video['summary']['$t']
-      thumb = R(ICON)
-      dir.Append(Function(DirectoryItem(ParseFeed, title=title, summary=summary, thumb=Function(Thumb, url=thumb)), url=link))
+      oc.add(DirectoryObject(
+        key = Callback(ParseFeed, title = title, url = link),
+        title = title,
+        summary = summary))
 
-  if len(dir) == 0:
+  # Check to see if there are any futher results available.
+  if rawfeed['feed'].has_key('openSearch$totalResults'):
+    total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+    items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+    start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+    if (start_index + items_per_page) < total_results:
+      oc.add(DirectoryObject(
+        key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+        title = 'Next'))
+
+  if len(oc) == 0:
     return MessageContainer(L('Error'), L('This query did not return any result'))
   else:
-    if (need_next):
-      dir.Append(Function(DirectoryItem(ParsePlaylists, title="Next"), url=url,page = page+1))
-    return dir
+    return oc
 
-def ParseSubscriptions(sender=None, url='',page=1):
-  dir = MediaContainer(viewGroup='InfoList', replaceParent = (page>1), httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
+def ParseSubscriptions(title, url = '',page = 1):
+  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
   
-  Localurl = AddJSONSuffix(url)+'&start-index=' + str((page-1)*MAXRESULTS+1) + '&max-results=' + str(MAXRESULTS)
+  local_url = AddJSONSuffix(url)
+  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
+  local_url += '&max-results=' + str(MAXRESULTS)
 
-  rawfeed = JSON.ObjectFromURL(Localurl, encoding='utf-8')
-  if rawfeed['feed'].has_key('openSearch$totalResults'):
-    need_previous = not (page == 1)
-    need_next = ((int(rawfeed['feed']['openSearch$startIndex']['$t']) + int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])) < int(rawfeed['feed']['openSearch$totalResults']['$t']))
-      
-  if (need_previous):
-    dir.Append(Function(DirectoryItem(ParseSubscriptions, title="Previous"), url=url,page = page-1))
-
+  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
   if rawfeed['feed'].has_key('entry'):
     for subscription in rawfeed['feed']['entry']:
       link = subscription['content']['src']
       if 'Activity of' in subscription['title']['$t']:
         title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Activity)")
-        dir.Append(Function(DirectoryItem(ParseSubscriptionFeed, title=title), url=link))
+        oc.add(DirectoryObject(
+          key = Callback(ParseSubscriptionFeed, title = title, url = link),
+          title = title))
       else : 
         title = subscription['title']['$t'].split(':',1)[1].strip() + L(" (Videos)")
-        dir.Append(Function(DirectoryItem(ParseFeed, title=title), url=link))
+        oc.add(DirectoryObject(
+          key = Callback(ParseFeed, title = title, url = link),
+          title = title))
 
-  if len(dir) == 0:
+  if len(oc) == 0:
     if 'default' in url:
       return MessageContainer(L('Error'), L('You have no subscriptions'))
     else:
       return MessageContainer(L('Error'), L('This user has no subscriptions'))
   else:
-    if (need_next):
-      dir.Append(Function(DirectoryItem(ParseSubscriptions, title="Next"), url=url,page = page+1))
-    return dir
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseSubscriptions, title = title, url = url, page = page + 1), 
+          title = 'Next'))
+    return oc
 
 ####################################################################################################
-def VideoSubMenu(sender, video_id, title):
-  dir = MediaContainer(httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-  
-  dir.Append(VideoItem(Route(PlayVideo, video_id=video_id) ,L('Play Video')))
-  #dir.Append(Function(DirectoryItem(SetAsFavorite, L('Mark as favorite in YouTube account'), ''),video_id = video_id,title =title))  
-  dir.Append(Function(DirectoryItem(ParseFeed, L('View Related'), ''),url=YOUTUBE_RELATED_FEED%video_id))
-  
-  return dir
-  
-def SetAsFavorite(sender, video_id, title):  
 
-  dir = MediaContainer(httpCookies=HTTP.CookiesForURL('http://www.youtube.com/'))
-  
+def GetThumb(url):
   try:
-    req = HTTP.Request('https://www.google.com/accounts/ClientLogin', values=dict(
-      Email = Prefs['youtube_user'],
-      Passwd = Prefs['youtube_passwd'],
-      service = "youtube",
-      source = DEVELOPER_KEY
-    ))
-    data = req.content
-    
-    for keys in data.split('\n'):
-      if 'Auth=' in keys:
-        AuthToken = keys.replace("Auth=",'')
-    
-    params = {
-        "Host":"gdata.youtube.com",
-        "Content-Type": "application/atom+xml",
-        "Authorization":"AuthSub token="+AuthToken,
-        "GData-Version":"2",
-        "X-GData-Key":"key="+DEVELOPER_KEY
-        }
-    Log(params)
-    
-    data = '<?xml version="1.0" encoding="UTF-8"?><entry xmlns="http://www.w3.org/2005/Atom"><id>'+video_id+'</id></entry>'
-    
-    req = HTTP.Request('http://gdata.youtube.com/feeds/api/users/default/favorites', values = params, data = data)
-    return MessageContainer("Success","This video has been added as a favorite to your account")
+    data = HTTP.Request(url, cacheTime = CACHE_1WEEK).content
+    return DataObject(data, 'image/jpeg')
   except:
-    return MessageContainer("Error","This video has NOT been added as a favorite to your account")
-  
-@route('/video/youtube/v/p')
-def PlayVideo(video_id):
-  yt_page = HTTP.Request(YOUTUBE_VIDEO_PAGE % (video_id), cacheTime=1).content 
+    Log.Exception("Error when attempting to get the associated thumb")
+    return Redirect(R(ICON))
 
-  fmt_url_map = re.findall('"url_encoded_fmt_stream_map".+?"([^"]+)', yt_page)[0]
-  fmt_url_map = fmt_url_map.replace('\/', '/').split(',')
+def GetUserThumb(user):
+  try:
+    details = JSON.ObjectFromURL(YOUTUBE_USER_PROFILE % user, encoding='utf-8')
+    return Redirect(GetThumb(details['entry']['media$thumbnail']['url']))
+  except:
+    Log.Exception("Error when attempting to get the associated user thumb")
+    return Redirect(R(ICON))
 
-  fmts = []
-  fmts_info = {}
+####################################################################################################
 
-  for f in fmt_url_map:
-    map = {}
-    params = f.split('\u0026')
-    for p in params:
-      (name, value) = p.split('=')
-      map[name] = value
-    quality = str(map['itag'])
-    fmts_info[quality] = String.Unquote(map['url'])
-    fmts.append(quality)
+def VideoSubMenu(title, video_id, video_url, summary = None, thumb = None, originally_available_at = None, rating = None):
+  oc = ObjectContainer(title2 = title)
 
-  index = YOUTUBE_VIDEO_FORMATS.index(Prefs['youtube_fmt'])
-  if YOUTUBE_FMT[index] in fmts:
-    fmt = YOUTUBE_FMT[index]
-  else:
-    for i in reversed( range(0, index+1) ):
-      if str(YOUTUBE_FMT[i]) in fmts:
-        fmt = YOUTUBE_FMT[i]
-        break
-      else:
-        fmt = 5
+  if video_id == None:
+    video_id = re.search('v=([^&]+)', video_url).group(1)
 
-  url = (fmts_info[str(fmt)]).decode('unicode_escape')
-  Log("  VIDEO URL --> " + url)
-  return Redirect(url)
+  oc.add(VideoClipObject(
+    url = video_url,
+    title = L('Play Video'),
+    summary = summary,
+    thumb = Callback(GetThumb, url = thumb),
+    originally_available_at = originally_available_at,
+    rating = rating))
+  oc.add(DirectoryObject(
+    key = Callback(ParseFeed, title = L('View Related'), url = YOUTUBE_RELATED_FEED % video_id),
+    title = L('View Related')))
+
+  return oc
+
