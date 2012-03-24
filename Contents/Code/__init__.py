@@ -582,9 +582,12 @@ def ParseFeed(title, url, page = 1):
         except: pass
 
         title = video['media$group']['media$title']['$t']
-        summary = video['media$group']['media$description']['$t']
         thumb = video['media$group']['media$thumbnail'][0]['url']
         duration = int(video['media$group']['yt$duration']['seconds']) * 1000
+
+        summary = None
+        try: summary = video['media$group']['media$description']['$t']
+        except: pass
 
         # [Optional]
         rating = None
