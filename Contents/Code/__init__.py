@@ -539,7 +539,7 @@ def Regionalize(url):
 
 def CheckRejectedEntry(entry):
   try:
-    return entry['app$control']['yt$state']['name'] == 'rejected'
+    return entry['app$control']['yt$state']['name'] in ['deleted', 'rejected', 'restricted']
   except:
     return False
 
