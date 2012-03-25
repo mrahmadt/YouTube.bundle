@@ -48,7 +48,7 @@ YOUTUBE_VIDEO_DETAILS = 'http://gdata.youtube.com/feeds/api/videos/%s?v=2&alt=js
 
 YOUTUBE_VIDEO_PAGE = 'http://www.youtube.com/watch?v=%s'
 
-USER_AGENT = 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.2.12) Gecko/20101026 Firefox/3.6.12'
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:11.0) Gecko/20100101 Firefox/11.0'
 
 YT_NAMESPACE = 'http://gdata.youtube.com/schemas/2007'
 
@@ -80,10 +80,10 @@ def Start():
   InputDirectoryObject.thumb = R(SEARCH)
   InputDirectoryObject.art = R(ART)
 
-  HTTP.CacheTime = 3600
+  HTTP.CacheTime = CACHE_1HOUR
   HTTP.Headers['User-Agent'] = USER_AGENT
   HTTP.Headers['X-GData-Key'] = "key="+DEVELOPER_KEY
-  
+
   Dict.Reset()
   Authenticate()
 
@@ -110,8 +110,10 @@ def MainMenu():
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
   oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
 
-  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
-    oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
+#  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+#    oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
+
+  oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
 
@@ -270,32 +272,39 @@ def TrailersVideos(title, url, page = 1):
 
 def MyAccount(title):
 
-  Authenticate()
+  if Prefs['youtube_user'] and Prefs['youtube_passwd']:
+    Authenticate()
+  else:
+    return MessageContainer("Login", "Enter your username and password in Preferences.")
 
-  oc = ObjectContainer(title2 = title)
-  oc.add(DirectoryObject(
-    key = Callback(ParseFeed, title = L('My Videos'), url = YOUTUBE_USER_VIDEOS % 'default'),
-    title = L('My Videos')))
-  oc.add(DirectoryObject(
-    key = Callback(ParseFeed, title = L('My Favorites'), url = YOUTUBE_USER_FAVORITES % 'default'),
-    title = L('My Favorites')))
-  oc.add(DirectoryObject(
-    key = Callback(ParsePlaylists, title = L('My Playlists'), url = YOUTUBE_USER_PLAYLISTS % 'default'),
-    title = L('My Playlists')))
-  oc.add(DirectoryObject(
-    key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
-    title = L('My Subscriptions')))
-  oc.add(DirectoryObject(
-    key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
-    title = L('My Contacts')))
+  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+    oc = ObjectContainer(title2 = title)
+    oc.add(DirectoryObject(
+      key = Callback(ParseFeed, title = L('My Videos'), url = YOUTUBE_USER_VIDEOS % 'default'),
+      title = L('My Videos')))
+    oc.add(DirectoryObject(
+      key = Callback(ParseFeed, title = L('My Favorites'), url = YOUTUBE_USER_FAVORITES % 'default'),
+      title = L('My Favorites')))
+    oc.add(DirectoryObject(
+      key = Callback(ParsePlaylists, title = L('My Playlists'), url = YOUTUBE_USER_PLAYLISTS % 'default'),
+      title = L('My Playlists')))
+    oc.add(DirectoryObject(
+      key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
+      title = L('My Subscriptions')))
+    oc.add(DirectoryObject(
+      key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
+      title = L('My Contacts')))
 
-  return oc
-   
+    return oc
+
+  else:
+    return MessageContainer("Login Failed", "Please check your username and password.")
+
 def MyContacts(title, url):
   oc = ObjectContainer(title2 = title)
-  contacts_page = JSON.ObjectFromURL(url, encoding='utf-8')
+  contacts_page = JSON.ObjectFromURL(url)
   if contacts_page['feed']['openSearch$totalResults']['$t'] == 0:
-    oc = MessageContainer(L("Error"), L("You have no contacts"))
+    return MessageContainer(L("Error"), L("You have no contacts"))
   else:
     for contact in contacts_page['feed']['entry']:
       if contact.has_key('yt$status') and contact['yt$status']['$t'] == 'accepted':
@@ -313,7 +322,7 @@ def ContactPage(username):
     key = Callback(ParseFeed, title = username + L('\'s favorites'), url = YOUTUBE_USER_FAVORITES % username),
     title = username + L('\'s favorites')))
   oc.add(DirectoryObject(
-    key = Callback(ParseFeed, title = username + L('\'s playlists'), url = YOUTUBE_USER_PLAYLISTS % username),
+    key = Callback(ParsePlaylists, title = username + L('\'s playlists'), url = YOUTUBE_USER_PLAYLISTS % username),
     title = username + L('\'s playlists')))
   return oc
 
@@ -472,15 +481,19 @@ def Authenticate():
           AuthToken = keys.replace("Auth=",'')
           HTTP.Headers['Authorization'] = "GoogleLogin auth="+AuthToken
           Dict['loggedIn'] = True
-          Log("Login Sucessful")
+          Log("Login Successful")
         if 'SID=' in keys:
           Dict['Session'] = keys.replace("SID=",'')
 
+      return True
+
     except:
       Dict['loggedIn'] = False
-      Log.Exception("Login Failed")
+      Log("Login Failed")
+      return False
 
-  return True
+  else:
+    return False
 
 ####################################################################################################
 
@@ -565,90 +578,88 @@ def ParseFeed(title, url, page = 1):
   local_url = Regionalize(local_url)
 
   try:
-
-    rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
-    if rawfeed['feed'].has_key('entry'):
-      for video in rawfeed['feed']['entry']:
-
-        # If the video has been rejected, ignore it.
-        if CheckRejectedEntry(video):
-          continue
-
-        # Determine the actual HTML URL associated with the view. This will allow us to simply redirect
-        # to the associated URL Service, when attempting to play the content.
-        video_url = None
-        for video_links in video['link']:
-          if video_links['type'] == 'text/html':
-            video_url = video_links['href']
-            break
-
-        # This is very unlikely to occur, but we should at least log.
-        if video_url is None:
-          Log('Found video that had no URL')
-          continue
-
-        # As well as the actual video URL, we need the associate id. This is required if the user wants
-        # to see related content.
-        video_id = None
-        try: video_id = re.search('v=([^&]+)', video_url).group(1).split('&')[0]
-        except: pass
-
-        title = video['media$group']['media$title']['$t']
-        thumb = video['media$group']['media$thumbnail'][0]['url']
-        duration = int(video['media$group']['yt$duration']['seconds']) * 1000
-
-        summary = None
-        try: summary = video['media$group']['media$description']['$t']
-        except: pass
-
-        # [Optional]
-        rating = None
-        try: rating = float(video['gd$rating']['average']) * 2
-        except: pass
-          
-        # [Optional]
-        date = None
-        try: date = Datetime.ParseDate(video['published']['$t'].split('T')[0])
-        except:
-          try: date = Datetime.ParseDate(video['updated']['$t'].split('T')[0])
-          except: pass
-
-        if Prefs['Submenu'] == True and video_id is not None:
-          oc.add(DirectoryObject(
-            key = Callback(
-              VideoSubMenu, 
-              title = title, 
-              video_id = video_id,
-              video_url = video_url, 
-              summary = summary,
-              thumb = thumb,
-              originally_available_at = date,
-              rating = rating),
-            title = title,
-            summary = summary,
-            thumb = Callback(GetThumb, url = thumb)))
-        else:
-          oc.add(VideoClipObject(
-            url = video_url,
-            title = title,
-            summary = summary,
-            thumb = Callback(GetThumb, url = thumb),
-            originally_available_at = date,
-            rating = rating))
-
-      # Check to see if there are any futher results available.
-      if rawfeed['feed'].has_key('openSearch$totalResults'):
-        total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
-        items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
-        start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
-        if (start_index + items_per_page) < total_results:
-          oc.add(DirectoryObject(
-            key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
-            title = 'Next'))
-
+    rawfeed = JSON.ObjectFromURL(local_url)
   except:
-    Log.Exception("Error")
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
+
+  if rawfeed['feed'].has_key('entry'):
+    for video in rawfeed['feed']['entry']:
+
+      # If the video has been rejected, ignore it.
+      if CheckRejectedEntry(video):
+        continue
+
+      # Determine the actual HTML URL associated with the view. This will allow us to simply redirect
+      # to the associated URL Service, when attempting to play the content.
+      video_url = None
+      for video_links in video['link']:
+        if video_links['type'] == 'text/html':
+          video_url = video_links['href']
+          break
+
+      # This is very unlikely to occur, but we should at least log.
+      if video_url is None:
+        Log('Found video that had no URL')
+        continue
+
+      # As well as the actual video URL, we need the associate id. This is required if the user wants
+      # to see related content.
+      video_id = None
+      try: video_id = re.search('v=([^&]+)', video_url).group(1).split('&')[0]
+      except: pass
+
+      video_title = video['media$group']['media$title']['$t']
+      thumb = video['media$group']['media$thumbnail'][0]['url']
+      duration = int(video['media$group']['yt$duration']['seconds']) * 1000
+
+      summary = None
+      try: summary = video['media$group']['media$description']['$t']
+      except: pass
+
+      # [Optional]
+      rating = None
+      try: rating = float(video['gd$rating']['average']) * 2
+      except: pass
+
+      # [Optional]
+      date = None
+      try: date = Datetime.ParseDate(video['published']['$t'].split('T')[0])
+      except:
+        try: date = Datetime.ParseDate(video['updated']['$t'].split('T')[0])
+        except: pass
+
+      if Prefs['Submenu'] == True and video_id is not None:
+        oc.add(DirectoryObject(
+          key = Callback(
+            VideoSubMenu,
+            title = video_title,
+            video_id = video_id,
+            video_url = video_url,
+            summary = summary,
+            thumb = thumb,
+            originally_available_at = date,
+            rating = rating),
+          title = video_title,
+          summary = summary,
+          thumb = Callback(GetThumb, url = thumb)))
+      else:
+        oc.add(VideoClipObject(
+          url = video_url,
+          title = video_title,
+          summary = summary,
+          thumb = Callback(GetThumb, url = thumb),
+          originally_available_at = date,
+          rating = rating))
+
+    # Check to see if there are any futher results available.
+    if rawfeed['feed'].has_key('openSearch$totalResults'):
+      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+      if (start_index + items_per_page) < total_results:
+        oc.add(DirectoryObject(
+          key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
+          title = 'Next'))
 
   if len(oc) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
@@ -664,7 +675,7 @@ def ParseSubscriptionFeed(title, url = '',page = 1):
   local_url += '&max-results=' + str(MAXRESULTS)
   local_url = Regionalize(local_url)
 
-  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  rawfeed = JSON.ObjectFromURL(local_url)
   for video in rawfeed['feed']['entry']:
     if ('events?' in url) and ('video' in video['category'][1]['term']):
       for details in video['link'][1]['entry']:
@@ -751,7 +762,7 @@ def ParseChannelFeed(title, url, page = 1):
   local_url += '&max-results=' + str(MAXRESULTS)
   local_url = Regionalize(local_url)
 
-  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  rawfeed = JSON.ObjectFromURL(local_url)
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
 
@@ -782,7 +793,7 @@ def ParseChannelFeed(title, url, page = 1):
     return oc
 
 def ParsePreFeed(title, feedpage):
-  videos = JSON.ObjectFromURL(feedpage, encoding='utf-8')['entry']['gd$feedLink']
+  videos = JSON.ObjectFromURL(feedpage)['entry']['gd$feedLink']
   for vid in videos:
     if 'upload' in vid['rel']:
       link = vid['href']
@@ -796,7 +807,7 @@ def ParseChannelSearch(title, url, page = 1):
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
   local_url += '&max-results=' + str(MAXRESULTS)
 
-  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  rawfeed = JSON.ObjectFromURL(local_url)
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['gd$feedLink'][0]['href']
@@ -831,7 +842,7 @@ def ParsePlaylists(title, url, page = 1):
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
   local_url += '&max-results=' + str(MAXRESULTS)
   
-  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  rawfeed = JSON.ObjectFromURL(local_url)
 #  Log(JSON.StringFromObject(rawfeed))
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
@@ -865,7 +876,7 @@ def ParseSubscriptions(title, url = '',page = 1):
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
   local_url += '&max-results=' + str(MAXRESULTS)
 
-  rawfeed = JSON.ObjectFromURL(local_url, encoding = 'utf-8')
+  rawfeed = JSON.ObjectFromURL(local_url)
   if rawfeed['feed'].has_key('entry'):
     for subscription in rawfeed['feed']['entry']:
       link = subscription['content']['src']
@@ -908,7 +919,7 @@ def GetThumb(url):
 
 def GetUserThumb(user):
   try:
-    details = JSON.ObjectFromURL(YOUTUBE_USER_PROFILE % user, encoding='utf-8')
+    details = JSON.ObjectFromURL(YOUTUBE_USER_PROFILE % user)
     return Redirect(GetThumb(details['entry']['media$thumbnail']['url']))
   except:
     Log.Exception("Error when attempting to get the associated user thumb")
