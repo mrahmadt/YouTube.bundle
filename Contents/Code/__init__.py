@@ -109,10 +109,6 @@ def MainMenu():
   #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
   oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
-
-#  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
-#    oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
-
   oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
@@ -843,7 +839,6 @@ def ParsePlaylists(title, url, page = 1):
   local_url += '&max-results=' + str(MAXRESULTS)
   
   rawfeed = JSON.ObjectFromURL(local_url)
-#  Log(JSON.StringFromObject(rawfeed))
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
       link = video['content']['src']
