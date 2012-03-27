@@ -518,8 +518,8 @@ def SubMenu(title, category):
   return oc
 
 ####################################################################################################
-
-def Search(query, title = '', search_type = 'videos'):
+# We add a default query string purely so that it is easier to be tested by the automated channel tester
+def Search(query = 'dog', title = '', search_type = 'videos'):
 
   url = YOUTUBE_QUERY % (search_type, String.Quote(query, usePlus = False))
   if search_type == 'videos':
