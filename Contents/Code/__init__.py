@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
-
 YOUTUBE_STANDARD_FEEDS = 'http://gdata.youtube.com/feeds/api/standardfeeds'
 
 YOUTUBE_STANDARD_TOP_RATED_URI = '%s/REGIONID/%s' % (YOUTUBE_STANDARD_FEEDS, 'top_rated')
@@ -51,6 +49,8 @@ YOUTUBE_VIDEO_PAGE = 'http://www.youtube.com/watch?v=%s'
 USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:11.0) Gecko/20100101 Firefox/11.0'
 
 YT_NAMESPACE = 'http://gdata.youtube.com/schemas/2007'
+
+RE_VIDEO_ID = Regex('v=([^&]+)')
 
 TITLE = 'YouTube'
 ART = 'art-default.jpg'
@@ -601,7 +601,7 @@ def ParseFeed(title, url, page = 1):
       # As well as the actual video URL, we need the associate id. This is required if the user wants
       # to see related content.
       video_id = None
-      try: video_id = re.search('v=([^&]+)', video_url).group(1).split('&')[0]
+      try: video_id = RE_VIDEO_ID.search(video_url).group(1).split('&')[0]
       except: pass
 
       video_title = video['media$group']['media$title']['$t']
@@ -682,7 +682,7 @@ def ParseSubscriptionFeed(title, url = '',page = 1):
             video_page = details['media$group']['media$player'][0]['url']
           except:
             video_page = details['media$group']['media$player']['url']
-            video_id = re.search('v=([^&]+)', video_page).group(1)
+            video_id = RE_VIDEO_ID.search(video_page).group(1)
         else:  
           video_id = None
 
@@ -926,7 +926,7 @@ def VideoSubMenu(title, video_id, video_url, summary = None, thumb = None, origi
   oc = ObjectContainer(title2 = title)
 
   if video_id == None:
-    video_id = re.search('v=([^&]+)', video_url).group(1)
+    video_id = RE_VIDEO_ID.search(video_url).group(1)
 
   oc.add(VideoClipObject(
     url = video_url,
