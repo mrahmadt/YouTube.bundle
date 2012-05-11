@@ -18,6 +18,7 @@ YOUTUBE_USER_VIDEOS = YOUTUBE_USER_FEED+'/uploads?v=2'
 YOUTUBE_USER_FAVORITES = YOUTUBE_USER_FEED+'/favorites?v=2'
 YOUTUBE_USER_PLAYLISTS = YOUTUBE_USER_FEED+'/playlists?v=2'
 YOUTUBE_USER_SUBSCRIPTIONS = YOUTUBE_USER_FEED+'/subscriptions?v=2'
+YOUTUBE_USER_NEWSUBSCRIPTIONS = YOUTUBE_USER_FEED+'/newsubscriptionvideos?v=2'
 YOUTUBE_USER_CONTACTS = YOUTUBE_USER_FEED+'/contacts?v=2&alt=json'
 
 YOUTUBE_RELATED_FEED = 'http://gdata.youtube.com/feeds/api/videos/%s/related?v=2'
@@ -287,6 +288,9 @@ def MyAccount(title):
     oc.add(DirectoryObject(
       key = Callback(ParseSubscriptions, title = L('My Subscriptions'), url = YOUTUBE_USER_SUBSCRIPTIONS % 'default'),
       title = L('My Subscriptions')))
+    oc.add(DirectoryObject(
+      key = Callback(ParseFeed, title = L('New Subscription Videos'), url = YOUTUBE_USER_NEWSUBSCRIPTIONS % 'default'),
+      title = L('New Subscription Videos')))
     oc.add(DirectoryObject(
       key = Callback(MyContacts, title = L('My Contacts'), url = YOUTUBE_USER_CONTACTS % 'default'),
       title = L('My Contacts')))
