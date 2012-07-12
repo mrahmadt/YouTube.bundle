@@ -164,7 +164,7 @@ def LiveMenu(title):
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
   
-    title = movie.xpath('.//a[@class = "yt-uix-tile-link"]')[0].get('title')
+    title = movie.xpath('.//a[contains(@class,"yt-uix-tile-link")]')[0].get('title')
   
     thumb = ICON
     try: thumb = movie.xpath('.//img[contains(@alt, "Thumbnail")]')[0].get('src')
