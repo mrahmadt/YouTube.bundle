@@ -156,9 +156,11 @@ def ChannelsMenu(title):
 def LiveMenu(title):
   oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
 
-  pageContent = HTTP.Request(YOUTUBE_LIVE).content
+  pageContent = HTTP.Request(YOUTUBE_LIVE, cacheTime = 0).content
   page = page = HTML.ElementFromString(pageContent)
-  for movie in page.xpath("//div[contains(@id,'live-main')]//li[contains(@class,'yt-uix-slider-slide-item')]"):
+  
+  live_now = page.xpath("//div[contains(@id,'live-main')]//div[contains(@class, 'browse-collection')]")[0]
+  for movie in live_now.xpath(".//li[contains(@class,'yt-uix-slider-slide-item')]"):
 
     video_url =  movie.xpath('.//h3/a')[0].get('href')
     if video_url.startswith(YOUTUBE) == False:
