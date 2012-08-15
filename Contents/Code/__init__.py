@@ -916,7 +916,7 @@ def ParseSubscriptions(title, url = '',page = 1):
 
 def GetThumb(url):
   try:
-    data = HTTP.Request(url, cacheTime = CACHE_1WEEK).content
+    data = HTTP.Request(url.replace('default.jpg', 'hqdefault.jpg'), cacheTime = CACHE_1WEEK).content
     return DataObject(data, 'image/jpeg')
   except:
     Log.Exception("Error when attempting to get the associated thumb")
