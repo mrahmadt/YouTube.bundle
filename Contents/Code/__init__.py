@@ -159,20 +159,19 @@ def LiveMenu(title):
   oc = ObjectContainer(title2 = title, view_group = 'PanelStream')
 
   pageContent = HTTP.Request(YOUTUBE_LIVE, cacheTime = 0).content
-  page = page = HTML.ElementFromString(pageContent)
+  page = HTML.ElementFromString(pageContent)
   
   live_now = page.xpath("//div[contains(@id,'live-main')]//div[contains(@class, 'browse-collection')]")[0]
   for movie in live_now.xpath(".//li[contains(@class,'yt-uix-slider-slide-item')]"):
 
-    video_url =  movie.xpath('.//h3/a')[0].get('href')
+    video_url = movie.xpath('.//h3/a')[0].get('href')
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
   
     title = movie.xpath('.//a[contains(@class,"yt-uix-tile-link")]')[0].get('title')
   
-    thumb = ICON
-    try: thumb = movie.xpath('.//img[contains(@alt, "Thumbnail")]')[0].get('src')
-    except: pass
+    try: thumb = movie.xpath('.//img[@width]')[0].get('src')
+    except: thumb = None
 
     if Prefs['Submenu'] == True:
       oc.add(DirectoryObject(
@@ -369,9 +368,8 @@ def ShowsCategoryMenu(title, url, page = 1):
     link = YOUTUBE + show.xpath('.//a')[0].get('href')
     summary = show.xpath('//div[@class = "details"]/text()')[0].strip()
 
-    thumb = R(ICON)
     try: thumb = show.xpath('.//img')[0].get('src')
-    except: pass
+    except: thumb = None
 
     oc.add(DirectoryObject(
       key = Callback(ShowSeasons, title = title, url = link, thumb = thumb),
@@ -915,12 +913,17 @@ def ParseSubscriptions(title, url = '',page = 1):
 ####################################################################################################
 
 def GetThumb(url):
-  try:
-    data = HTTP.Request(url.replace('default.jpg', 'hqdefault.jpg'), cacheTime = CACHE_1WEEK).content
-    return DataObject(data, 'image/jpeg')
-  except:
-    Log.Exception("Error when attempting to get the associated thumb")
-    return Redirect(R(ICON))
+  if url:
+    try:
+      if url[0:2] == '//':
+        url = 'http:%s' % url
+
+      data = HTTP.Request(url.replace('default.jpg', 'hqdefault.jpg'), cacheTime = CACHE_1WEEK).content
+      return DataObject(data, 'image/jpeg')
+    except:
+      Log.Exception("Error when attempting to get the associated thumb")
+      pass
+  return Redirect(R(ICON))
 
 def GetUserThumb(user):
   try:
