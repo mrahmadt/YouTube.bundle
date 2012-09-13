@@ -742,15 +742,15 @@ def ParseSubscriptionFeed(title, url = '',page = 1):
               originally_available_at = date,
               rating = rating))
 
-        # Check to see if there are any futher results available.
-        if rawfeed['feed'].has_key('openSearch$totalResults'):
-          total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
-          items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
-          start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
-          if (start_index + items_per_page) < total_results:
-            oc.add(DirectoryObject(
-              key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
-              title = 'Next'))
+  # Check to see if there are any futher results available.
+  if rawfeed['feed'].has_key('openSearch$totalResults'):
+    total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
+    items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
+    start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
+    if (start_index + items_per_page) < total_results:
+      oc.add(DirectoryObject(
+        key = Callback(ParseSubscriptionFeed, title = title, url = url, page = page + 1),
+        title = 'Next'))
 
   if len(oc) == 0:
     return MessageContainer(L('Error'), L('This feed does not contain any video'))
