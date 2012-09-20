@@ -632,7 +632,7 @@ def ParseFeed(title, url, page = 1):
         try: date = Datetime.ParseDate(video['updated']['$t'].split('T')[0])
         except: pass
 
-      if Prefs['Submenu'] == True and video_id is not None:
+      if Prefs['Submenu'] == True and video_id is not None and '/playlist/' not in url:
         oc.add(DirectoryObject(
           key = Callback(
             VideoSubMenu,
