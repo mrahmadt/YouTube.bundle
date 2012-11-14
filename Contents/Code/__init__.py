@@ -73,7 +73,9 @@ def Start():
   ObjectContainer.art = R(ART)
 
   DirectoryObject.thumb = R(ICON)
+  NextPageObject.thumb = R(ICON)
   DirectoryObject.art = R(ART)
+  NextPageObject.art = R(ART)
   VideoClipObject.thumb = R(ICON)
   VideoClipObject.art = R(ART)
 
