@@ -256,7 +256,7 @@ def TrailersVideos(title, url, page = 1):
         originally_available_at = date))
 
   if '>Next<' in page_content:
-    oc.add(DirectoryObject(
+    oc.add(NextPageObject(
       key = Callback(TrailersVideos, title = title, url = url, page = page + 1),
       title = L("Next Page ...")))
 
@@ -378,7 +378,7 @@ def ShowsCategoryMenu(title, url, page = 1):
       thumb = Callback(GetThumb, url = thumb)))
 
   if '>Next<' in page_content:
-    oc.add(DirectoryObject(
+    oc.add(NextPageObject(
       key = Callback(ShowsCategoryMenu, title = title, url = url, page = page + 1),
       title = L("Next Page ...")))
 
@@ -661,7 +661,7 @@ def ParseFeed(title, url, page = 1):
       items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
       start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
       if (start_index + items_per_page) < total_results:
-        oc.add(DirectoryObject(
+        oc.add(NextPageObject(
           key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
           title = 'Next'))
 
@@ -748,7 +748,7 @@ def ParseSubscriptionFeed(title, url = '',page = 1):
     items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
     start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
     if (start_index + items_per_page) < total_results:
-      oc.add(DirectoryObject(
+      oc.add(NextPageObject(
         key = Callback(ParseSubscriptionFeed, title = title, url = url, page = page + 1),
         title = 'Next'))
 
@@ -787,7 +787,7 @@ def ParseChannelFeed(title, url, page = 1):
       items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
       start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
       if (start_index + items_per_page) < total_results:
-        oc.add(DirectoryObject(
+        oc.add(NextPageObject(
           key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
           title = 'Next'))
 
@@ -830,7 +830,7 @@ def ParseChannelSearch(title, url, page = 1):
       items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
       start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
       if (start_index + items_per_page) < total_results:
-        oc.add(DirectoryObject(
+        oc.add(NextPageObject(
           key = Callback(ParseChannelSearch, title = title, url = url, page = page + 1), 
           title = 'Next'))
 
@@ -863,7 +863,7 @@ def ParsePlaylists(title, url, page = 1):
     items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
     start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
     if (start_index + items_per_page) < total_results:
-      oc.add(DirectoryObject(
+      oc.add(NextPageObject(
         key = Callback(ParseFeed, title = title, url = url, page = page + 1), 
         title = 'Next'))
 
@@ -905,7 +905,7 @@ def ParseSubscriptions(title, url = '',page = 1):
       items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
       start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
       if (start_index + items_per_page) < total_results:
-        oc.add(DirectoryObject(
+        oc.add(NextPageObject(
           key = Callback(ParseSubscriptions, title = title, url = url, page = page + 1), 
           title = 'Next'))
     return oc
