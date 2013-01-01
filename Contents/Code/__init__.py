@@ -192,7 +192,7 @@ def LiveMenu(title):
         thumb = Callback(GetThumb, url = thumb)))
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -212,7 +212,7 @@ def TrailersMenu(title):
       title = title))
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -263,7 +263,7 @@ def TrailersVideos(title, url, page = 1):
       title = L("Next Page ...")))
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -276,7 +276,7 @@ def MyAccount(title):
   if Prefs['youtube_user'] and Prefs['youtube_passwd']:
     Authenticate()
   else:
-    return MessageContainer("Login", "Enter your username and password in Preferences.")
+    return ObjectContainer(header="Login", message="Enter your username and password in Preferences.")
 
   if 'loggedIn' in Dict and Dict['loggedIn'] == True:
     oc = ObjectContainer(title2 = title)
@@ -305,13 +305,13 @@ def MyAccount(title):
     return oc
 
   else:
-    return MessageContainer("Login Failed", "Please check your username and password.")
+    return ObjectContainer(header="Login Failed", message="Please check your username and password.")
 
 def MyContacts(title, url):
   oc = ObjectContainer(title2 = title)
   contacts_page = JSON.ObjectFromURL(url)
   if contacts_page['feed']['openSearch$totalResults']['$t'] == 0:
-    return MessageContainer(L("Error"), L("You have no contacts"))
+    return ObjectContainer(header=L("Error"), message=L("You have no contacts"))
   else:
     for contact in contacts_page['feed']['entry']:
       if contact.has_key('yt$status') and contact['yt$status']['$t'] == 'accepted':
@@ -355,7 +355,7 @@ def ShowsMenu(title):
       title = title))
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -385,7 +385,7 @@ def ShowsCategoryMenu(title, url, page = 1):
       title = L("Next Page ...")))
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -452,7 +452,7 @@ def ShowsVideos(title, url, thumb):
     ajax_url = ajax_source['show_more']
 
   if len(oc) == 0:
-    return MessageContainer("Empty", "There aren't any items")
+    return ObjectContainer(header="Empty", message="There aren't any items")
 
   return oc
 
@@ -586,7 +586,7 @@ def ParseFeed(title, url, page = 1):
   try:
     rawfeed = JSON.ObjectFromURL(local_url)
   except:
-    return MessageContainer(L('Error'), L('This feed does not contain any video'))
+    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
 
   if rawfeed['feed'].has_key('entry'):
     for video in rawfeed['feed']['entry']:
@@ -668,7 +668,7 @@ def ParseFeed(title, url, page = 1):
           title = 'Next'))
 
   if len(oc) == 0:
-    return MessageContainer(L('Error'), L('This feed does not contain any video'))
+    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
   else:
     return oc
 
@@ -755,7 +755,7 @@ def ParseSubscriptionFeed(title, url = '',page = 1):
         title = 'Next'))
 
   if len(oc) == 0:
-    return MessageContainer(L('Error'), L('This feed does not contain any video'))
+    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
   else:
     return oc
 
@@ -794,7 +794,7 @@ def ParseChannelFeed(title, url, page = 1):
           title = 'Next'))
 
   if len(oc) == 0:
-    return MessageContainer(L('Error'), L('This query did not return any result'))
+    return ObjectContainer(header=L('Error'), message=L('This query did not return any result'))
   else:
     return oc
 
@@ -837,7 +837,7 @@ def ParseChannelSearch(title, url, page = 1):
           title = 'Next'))
 
   if len(oc) == 0:
-    return MessageContainer(L('Error'), L('This feed does not contain any video'))
+    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
   else:
     return oc
 
@@ -870,7 +870,7 @@ def ParsePlaylists(title, url, page = 1):
         title = 'Next'))
 
   if len(oc) == 0:
-    return MessageContainer(L('Error'), L('This query did not return any result'))
+    return ObjectContainer(header=L('Error'), message=L('This query did not return any result'))
   else:
     return oc
 
@@ -898,9 +898,9 @@ def ParseSubscriptions(title, url = '',page = 1):
 
   if len(oc) == 0:
     if 'default' in url:
-      return MessageContainer(L('Error'), L('You have no subscriptions'))
+      return ObjectContainer(header=L('Error'), message=L('You have no subscriptions'))
     else:
-      return MessageContainer(L('Error'), L('This user has no subscriptions'))
+      return ObjectContainer(header=L('Error'), message=L('This user has no subscriptions'))
   else:
     if rawfeed['feed'].has_key('openSearch$totalResults'):
       total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
