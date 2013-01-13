@@ -58,7 +58,6 @@ TITLE = 'YouTube'
 ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 PREFS = 'icon-prefs.png'
-SEARCH = 'icon-search.png'
 
 ####################################################################################################
 
@@ -81,7 +80,7 @@ def Start():
 
   PrefsObject.thumb = R(PREFS)
   PrefsObject.art = R(ART)
-  InputDirectoryObject.thumb = R(SEARCH)
+  InputDirectoryObject.thumb = R('search.png')
   InputDirectoryObject.art = R(ART)
 
   HTTP.CacheTime = CACHE_1HOUR
