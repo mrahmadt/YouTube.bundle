@@ -38,7 +38,7 @@ CRACKLE_URL = 'http://www.crackle.com/gtv/WatchShow.aspx?id=%s'
 
 YOUTUBE_SHOWS = YOUTUBE + '/shows?hl=en'
 YOUTUBE_TRAILERS = YOUTUBE + '/trailers?hl=en'
-YOUTUBE_LIVE = YOUTUBE + '/live/all/videos?view=19&flow=grid'
+YOUTUBE_LIVE = YOUTUBE + '/live/all/videos?flow=grid'
 
 MAXRESULTS = 50
 
