@@ -38,7 +38,7 @@ CRACKLE_URL = 'http://www.crackle.com/gtv/WatchShow.aspx?id=%s'
 
 YOUTUBE_SHOWS = YOUTUBE + '/shows?hl=en'
 YOUTUBE_TRAILERS = YOUTUBE + '/trailers?hl=en'
-YOUTUBE_LIVE = YOUTUBE + '/live'
+YOUTUBE_LIVE = YOUTUBE + '/live/all/videos?view=19&flow=grid'
 
 MAXRESULTS = 50
 
@@ -162,14 +162,14 @@ def LiveMenu(title):
   pageContent = HTTP.Request(YOUTUBE_LIVE, cacheTime = 0).content
   page = HTML.ElementFromString(pageContent)
   
-  live_now = page.xpath("//div[contains(@id,'live-main')]//div[contains(@class, 'browse-collection')]")[0]
-  for movie in live_now.xpath(".//li[contains(@class,'yt-uix-slider-slide-item')]"):
+  live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
+  for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
 
-    video_url = movie.xpath('.//h3/a')[0].get('href')
+    video_url = movie.xpath(".//a[contains(@class,'content-item-title')]")[0].get('href')
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
   
-    title = movie.xpath('.//a[contains(@class,"yt-uix-tile-link")]')[0].get('title')
+    title = movie.xpath('.//a[contains(@class,"content-item-title")]//text()')[0].lstrip().rstrip()
   
     try: thumb = movie.xpath('.//img[@width]')[0].get('src')
     except: thumb = None
