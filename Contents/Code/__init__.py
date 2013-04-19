@@ -605,6 +605,7 @@ def ParseFeed(title, url, page = 1):
 
       video_title = video['media$group']['media$title']['$t']
       thumb = video['media$group']['media$thumbnail'][0]['url']
+      thumb_hq = thumb.replace('default.jpg', 'hqdefault.jpg')
       duration = int(video['media$group']['yt$duration']['seconds']) * 1000
 
       summary = None
@@ -627,7 +628,8 @@ def ParseFeed(title, url, page = 1):
         url = video_url,
         title = video_title,
         summary = summary,
-        thumb = Resource.ContentsOfURLWithFallback(thumb),
+        thumb = Resource.ContentsOfURLWithFallback([thumb_hq, thumb]),
+        duration = duration,
         originally_available_at = date,
         rating = rating
       ))
@@ -706,6 +708,7 @@ def ParseSubscriptionFeed(title, url='', page=1):
             title = video_title,
             summary = summary,
             thumb = Resource.ContentsOfURLWithFallback(thumb),
+            duration = duration,
             originally_available_at = date,
             rating = rating
           ))
