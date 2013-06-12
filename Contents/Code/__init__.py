@@ -85,7 +85,7 @@ def MainMenu():
   #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
   #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
-  oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
+  #oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
   oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
@@ -142,12 +142,12 @@ def LiveMenu(title):
   live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
 
   for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
-    video_url = movie.xpath(".//a[contains(@class,'content-item-title')]")[0].get('href')
+    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup2-title')]/a//@href")[0]
 
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
 
-    title = movie.xpath('.//a[contains(@class,"content-item-title")]//text()')[0].lstrip().rstrip()
+    title = movie.xpath('.//h3[contains(@class,"yt-lockup2-title")]/a//text()')[0].lstrip().rstrip()
 
     try: thumb = movie.xpath('.//img[@width]')[0].get('src')
     except: thumb = ''
@@ -156,69 +156,6 @@ def LiveMenu(title):
       url = video_url,
       title = title,
       thumb = Resource.ContentsOfURLWithFallback(thumb)
-    ))
-
-  if len(oc) < 1:
-    return ObjectContainer(header="Empty", message="There aren't any items")
-
-  return oc
-
-####################################################################################################
-## TRAILERS
-####################################################################################################
-def TrailersMenu(title):
-
-  oc = ObjectContainer(title2 = title)
-  page = HTML.ElementFromURL(YOUTUBE_TRAILERS)
-  categories = page.xpath("//div[@class='trailer-list']/preceding-sibling::h3/a")
-
-  for category in categories:
-    title = category.text.strip()
-
-    oc.add(DirectoryObject(
-      key = Callback(TrailersVideos, title=title, url=YOUTUBE + category.get('href')),
-      title = title
-    ))
-
-  if len(oc) < 1:
-    return ObjectContainer(header="Empty", message="There aren't any items")
-
-  return oc
-
-####################################################################################################
-def TrailersVideos(title, url, page = 1):
-
-  oc = ObjectContainer(title2=title, view_group='PanelStream')
-  page_content = HTTP.Request(url+'&p='+str(page)).content
-  page = HTML.ElementFromString(page_content)
-
-  for trailer in page.xpath("//div[contains(@class,'trailer-cell')]"):
-    video_url = YOUTUBE + trailer.xpath('.//a')[0].get('href')
-    title = trailer.xpath('.//div[@class="trailer-short-title"]/a/text()')[0].strip()
-    thumb = trailer.xpath('.//img')[0].get('data-thumb')
-    summary = trailer.xpath('.//div[@class = "video-description"]/text()')[0].strip()
-
-    # [Optional]
-    try:
-      date = trailer.xpath('.//span[contains(@class, "video-release-date")]/text()')[0].strip()
-      date = date.replace('Opened', '').strip()
-      date = Datetime.ParseDate(date)
-    except:
-      date = None
-      pass
-
-    oc.add(VideoClipObject(
-      url = video_url,
-      title = title,
-      thumb = Resource.ContentsOfURLWithFallback(thumb),
-      summary = summary,
-      originally_available_at = date
-    ))
-
-  if '>Next<' in page_content:
-    oc.add(NextPageObject(
-      key = Callback(TrailersVideos, title=title, url=url, page=page+1),
-      title = L("Next Page ...")
     ))
 
   if len(oc) < 1:
