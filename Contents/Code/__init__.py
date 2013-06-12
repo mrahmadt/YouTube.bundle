@@ -33,7 +33,6 @@ YOUTUBE = 'http://www.youtube.com'
 YOUTUBE_MOVIES = YOUTUBE + '/moviemovs?hl=en'
 
 YOUTUBE_SHOWS = YOUTUBE + '/shows?hl=en'
-YOUTUBE_TRAILERS = YOUTUBE + '/trailers?hl=en'
 YOUTUBE_LIVE = YOUTUBE + '/live/all/videos?flow=grid'
 
 MAXRESULTS = 50
@@ -85,7 +84,6 @@ def MainMenu():
   #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
   #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
-  #oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
   oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
@@ -142,7 +140,7 @@ def LiveMenu(title):
   live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
 
   for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
-    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup2-title')]/a//@href")[0]
+    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup2-title')]/a/@href")[0]
 
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
