@@ -85,7 +85,7 @@ def MainMenu():
   #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
   #oc.add(DirectoryObject(key = Callback(ShowsMenu, title = L('Shows')), title = L('Shows')))
   oc.add(DirectoryObject(key = Callback(LiveMenu, title = L('Live')), title = L('Live')))
-  oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
+  #oc.add(DirectoryObject(key = Callback(TrailersMenu, title = L('Trailers')), title = L('Trailers')))
   oc.add(DirectoryObject(key = Callback(MyAccount, title = L('My Account')), title = L('My Account')))
 
   oc.add(PrefsObject(title = L('Preferences')))
@@ -157,75 +157,6 @@ def LiveMenu(title):
       title = title,
       thumb = Resource.ContentsOfURLWithFallback(thumb)
     ))
-
-  if len(oc) < 1:
-    return ObjectContainer(header="Empty", message="There aren't any items")
-
-  return oc
-
-####################################################################################################
-## TRAILERS
-####################################################################################################
-def TrailersMenu(title):
-
-  oc = ObjectContainer(title2 = title)
-  page = HTML.ElementFromURL(YOUTUBE_TRAILERS)
-  Log('entered Trailers')
-
-  for category in page.xpath('//h2[@class="branded-page-module-title"]/a[@class="yt-uix-sessionlink "]'):
-    title = category.xpath('.//text()')[0]
-    title = title.strip()
-    trailer_url = category.xpath('.//@href')[0]
-    # trailer_url = trailer_url.replace('/playlist?list=', 'http://gdata.youtube.com/feeds/api/playlists/')
-
-    oc.add(DirectoryObject(
-      key = Callback(TrailersVideos, title=title, url=YOUTUBE + trailer_url),
-      title = title
-    ))
-
-  if len(oc) < 1:
-    return ObjectContainer(header="Empty", message="There aren't any items")
-
-  return oc
-
-####################################################################################################
-# the videos above do not work in the parsefeed so pulling the xml
-def TrailersVideos(title, url, page = 1):
-
-  oc = ObjectContainer(title2=title, view_group='PanelStream')
-  page = HTML.ElementFromURL(url)
-
-  for trailer in page.xpath('//div[@class="playlist-video-item-base-content "]'):
-    video_url = YOUTUBE + trailer.xpath('./div[@class="video-info "]/div/h3/a//@href')[0]
-    title = trailer.xpath('./div[@class="video-info "]/div/h3/a/span//text()')
-    titel = title.replace("['", '').replace("']", '')
-    thumb = trailer.xpath('./div[@class="thumb-container"]/a/span/span/span/span/img//@src')[0]
-    thumb = 'http:' + thumb
-    # could do a regex to get summary and date but probably not worth it if these trailers will change
-    # summary = trailer.xpath('.//div[@class = "video-description"]/text()')[0].strip()
-
-    # [Optional]
-    try:
-      date = trailer.xpath('.//span[contains(@class, "video-release-date")]/text()')[0].strip()
-      date = date.replace('Opened', '').strip()
-      date = Datetime.ParseDate(date)
-    except:
-      date = None
-      pass
-
-    oc.add(VideoClipObject(
-      url = video_url,
-      title = title,
-      thumb = Resource.ContentsOfURLWithFallback(thumb),
-      # summary = summary,
-      originally_available_at = date
-    ))
-
-#  if '>Next<' in page_content:
-#    oc.add(NextPageObject(
-#      key = Callback(TrailersVideos, title=title, url=url, page=page+1),
-#      title = L("Next Page ...")
-#    ))
 
   if len(oc) < 1:
     return ObjectContainer(header="Empty", message="There aren't any items")
