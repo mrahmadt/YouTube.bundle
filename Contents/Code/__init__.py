@@ -403,6 +403,12 @@ def Authenticate():
 
       return True
 
+    except Ex.HTTPError, e:
+      Dict['loggedIn'] = False
+      Log("Login Failed")
+      Log(e.content)
+      return False
+
     except:
       Dict['loggedIn'] = False
       Log("Login Failed")
