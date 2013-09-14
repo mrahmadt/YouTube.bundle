@@ -140,12 +140,12 @@ def LiveMenu(title):
   live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
 
   for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
-    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup2-title')]/a/@href")[0]
+    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup-title')]/a//@href")[0]
 
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
 
-    title = movie.xpath('.//h3[contains(@class,"yt-lockup2-title")]/a//text()')[0].lstrip().rstrip()
+    title = movie.xpath('.//h3[contains(@class,"yt-lockup-title")]/a//text()')[0].lstrip().rstrip()
 
     try: thumb = movie.xpath('.//img[@width]')[0].get('src')
     except: thumb = ''
