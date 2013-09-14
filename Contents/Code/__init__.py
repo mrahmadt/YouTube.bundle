@@ -28,14 +28,12 @@ YOUTUBE_CHANNELS_MOSTVIEWED_URI = YOUTUBE_CHANNELS_FEEDS % ('most_viewed')
 YOUTUBE_CHANNELS_MOSTSUBSCRIBED_URI = YOUTUBE_CHANNELS_FEEDS % ('most_subscribed')
 
 YOUTUBE_QUERY = 'http://gdata.youtube.com/feeds/api/%s?q=%s&v=2'
-YOUTUBE_LIVE_QUERY = 'http://www.youtube.com/results?search_query=%s&filters=live&status=active'
 
 YOUTUBE = 'http://www.youtube.com'
 YOUTUBE_MOVIES = YOUTUBE + '/moviemovs?hl=en'
 
 YOUTUBE_SHOWS = YOUTUBE + '/shows?hl=en'
 YOUTUBE_LIVE = YOUTUBE + '/live/all/videos?flow=grid'
-YOUTUBE_LIVE_FEED = 'https://gdata.youtube.com/feeds/api/charts/live/events/%s?v=2&inline=true'
 
 MAXRESULTS = 50
 
@@ -137,140 +135,27 @@ def LiveMenu(title):
 
   oc = ObjectContainer(title2 = title, view_group='PanelStream')
 
-  oc = ObjectContainer(title2=title)
-  oc.add(DirectoryObject(key=Callback(ParseLiveFeed, title=L('Featured'), url= YOUTUBE_LIVE_FEED  % 'featured'), title=L('Featured')))
-  oc.add(DirectoryObject(key=Callback(ParseLiveFeed, title=L('Live Now'), url= YOUTUBE_LIVE_FEED  % 'live_now'), title=L('Live Now'))) 
-  oc.add(DirectoryObject(key=Callback(ParseLiveFeed, title=L('Upcoming'), url= YOUTUBE_LIVE_FEED  % 'upcoming'), title=L('Upcoming'))) 
-  oc.add(DirectoryObject(key=Callback(ParseLiveFeed, title=L('Recently Broadcasted'), url= YOUTUBE_LIVE_FEED  % 'recently_broadcasted'), title=L('Recently Broadcasted'))) 
-  oc.add(InputDirectoryObject(key=Callback(LiveSearch, title=L('Search Live Now Videos')), title=L('Search Live Now Videos'), prompt=L('Search Live Now Videos')))
+  page_content = HTTP.Request(YOUTUBE_LIVE, cacheTime = 0).content
+  page = HTML.ElementFromString(page_content)
+  live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
 
-  return oc
+  for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
+    video_url = movie.xpath(".//h3[contains(@class,'yt-lockup2-title')]/a/@href")[0]
 
-####################################################################################################
-# This will parse feed with inline=true so feed contains the video info in content
-def ParseLiveFeed(title, url, page = 1):
+    if video_url.startswith(YOUTUBE) == False:
+      video_url = YOUTUBE + video_url
 
-  oc = ObjectContainer(title2=title, view_group='InfoList', replace_parent=(page > 1))
+    title = movie.xpath('.//h3[contains(@class,"yt-lockup2-title")]/a//text()')[0].lstrip().rstrip()
 
-  # Construct the appropriate URL
-  local_url = AddJSONSuffix(url)
-  local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
-  local_url += '&max-results=' + str(MAXRESULTS)
-  local_url = Regionalize(local_url)
-
-  try:
-    rawfeed = JSON.ObjectFromURL(local_url)
-  except:
-    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
-
-  if rawfeed['feed'].has_key('entry'):
-    for video in rawfeed['feed']['entry']:
-
-      # If the video has been rejected, ignore it.
-      if CheckRejectedEntry(video):
-        continue
-
-      # Determine the actual HTML URL associated with the view. This will allow us to simply redirect
-      # to the associated URL Service, when attempting to play the content.
-      for content in video['content']['entry']:
-        video_url = None
-        for video_links in content['link']:
-          if video_links['type'] == 'text/html':
-            video_url = video_links['href']
-            break
-
-        # This is very unlikely to occur, but we should at least log.
-        if video_url is None:
-          Log('Found video that had no URL')
-          continue
-
-        # As well as the actual video URL, we need the associate id. This is required if the user wants
-        # to see related content.
-        video_id = None
-        try: video_id = RE_VIDEO_ID.search(video_url).group(1).split('&')[0]
-        except: pass
-
-        video_title = content['media$group']['media$title']['$t']
-        thumb = content['media$group']['media$thumbnail'][0]['url']
-        thumb_hq = thumb.replace('default.jpg', 'hqdefault.jpg')
-        try:
-          duration = int(content['media$group']['yt$duration']['seconds']) * 1000
-        except:
-          duration = 0
-
-        summary = None
-        try: summary = content['media$group']['media$description']['$t']
-        except: pass
-
-        # [Optional]
-        rating = None
-        try: rating = float(content['gd$rating']['average']) * 2
-        except: pass
-
-        # [Optional]
-        date = None
-        try: date = Datetime.ParseDate(content['published']['$t'].split('T')[0])
-        except:
-          try: date = Datetime.ParseDate(content['updated']['$t'].split('T')[0])
-          except: pass
-
-        oc.add(VideoClipObject(
-          url = video_url,
-          title = video_title,
-          summary = summary,
-          thumb = Resource.ContentsOfURLWithFallback([thumb_hq, thumb]),
-          # duration = int(duration),
-          originally_available_at = date,
-          rating = rating
-        ))
-
-    # Check to see if there are any futher results available.
-    if rawfeed['feed'].has_key('openSearch$totalResults'):
-      total_results = int(rawfeed['feed']['openSearch$totalResults']['$t'])
-      items_per_page = int(rawfeed['feed']['openSearch$itemsPerPage']['$t'])
-      start_index = int(rawfeed['feed']['openSearch$startIndex']['$t'])
-
-      if (start_index + items_per_page) < total_results:
-        oc.add(NextPageObject(
-          key = Callback(ParseLiveFeed, title = title, url = url, page = page + 1), 
-          title = L("Next Page ...")
-        ))
-
-  if len(oc) < 1:
-    return ObjectContainer(header=L('Error'), message=L('This feed does not contain any video'))
-  else:
-    return oc
-	
-###################################################################################################
-# Live search deosn't work with api, so have to do an html search and return results
-# ex http://www.youtube.com/results?search_query=dog&filters=live&lclk=live&page=1&status=active
-def LiveSearchResults(title, url, page=1):
-
-  oc = ObjectContainer(title2=title, view_group='InfoList')
-  page_content = HTTP.Request(url + '?p=' + str(page)).content
-  html = HTML.ElementFromString(page_content)
-
-  for video in html.xpath('//ol[@id="search-results"]/li'):
-    title = video.xpath('./div/h3[@class="yt-lockup2-title"]/a//text()')[0]
-    link = YOUTUBE + video.xpath('./div/h3[@class="yt-lockup2-title"]/a//@href')[0]
-    summary = video.xpath('//div[@class="yt-lockup2-content"]/p//text()')[0].strip()
-
-    try: thumb = 'http:' + video.xpath('./div[@class="yt-lockup2-thumbnail"]/a/span/span/span/span/img//@src')[0]
+    try: thumb = movie.xpath('.//img[@width]')[0].get('src')
     except: thumb = ''
 
     oc.add(VideoClipObject(
+      url = video_url,
       title = title,
-	  url = link,
-      summary = summary,
       thumb = Resource.ContentsOfURLWithFallback(thumb)
     ))
 
-# then use next for pages
-  if 'Next »' in page_content:
-    oc.add(NextPageObject(
-      key = Callback(LiveSearchResults, title=title, url=url, page=page + 1),
-      title = L("Next Page ...")
-    ))
   if len(oc) < 1:
     return ObjectContainer(header="Empty", message="There aren't any items")
 
@@ -518,6 +403,12 @@ def Authenticate():
 
       return True
 
+    except Ex.HTTPError, e:
+      Dict['loggedIn'] = False
+      Log("Login Failed")
+      Log(e.content)
+      return False
+
     except:
       Dict['loggedIn'] = False
       Log("Login Failed")
@@ -565,15 +456,6 @@ def Search(query = 'dog', title = '', search_type = 'videos'):
     return ParseFeed(title = title, url = url)
   else:
     return ParseChannelSearch(title = title, url = url)
-
-  return oc
-####################################################################################################
-# We add a default query string purely so that it is easier to be tested by the automated channel tester
-def LiveSearch(query = 'dog', title = ''):
-
-  url = YOUTUBE_LIVE_QUERY % String.Quote(query, usePlus = False)
-
-  return LiveSearchResults(title = title, url = url)
 
   return oc
 
