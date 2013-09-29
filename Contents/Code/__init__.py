@@ -133,21 +133,21 @@ def ChannelsMenu(title):
 ####################################################################################################
 def LiveMenu(title):
 
-  oc = ObjectContainer(title2 = title, view_group='PanelStream')
+  oc = ObjectContainer(title2=title, view_group='PanelStream')
 
-  page_content = HTTP.Request(YOUTUBE_LIVE, cacheTime = 0).content
+  page_content = HTTP.Request(YOUTUBE_LIVE, cacheTime=0).content
   page = HTML.ElementFromString(page_content)
   live_now = page.xpath("//div[contains(@id,'video-page-content')]")[0]
 
   #for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]/div[contains(@class,'yt-lockup-video')]"):
     #video_url = movie.xpath("./div/a/@href")[0]
   for movie in live_now.xpath(".//li[contains(@class,'channels-content-item')]"):
-    video_url = movie.xpath(".//a/@href")[0]
+    video_url = movie.xpath(".//a[@title]/@href")[0]
 
     if video_url.startswith(YOUTUBE) == False:
       video_url = YOUTUBE + video_url
 
-    title = movie.xpath('.//a//text()')[0].lstrip().rstrip()
+    title = movie.xpath('.//a[@title]/text()')[0].lstrip().rstrip()
 
     try: thumb = movie.xpath('.//img[@width]')[0].get('src')
     except: thumb = ''
