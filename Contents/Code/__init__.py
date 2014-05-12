@@ -48,12 +48,7 @@ RE_VIDEO_ID = Regex('v=([^&]+)')
 def Start():
 
   Plugin.AddPrefixHandler('/video/youtube', MainMenu, 'YouTube')
-  Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
-  Plugin.AddViewGroup('InfoList', viewMode='InfoList', mediaType='items')
-  Plugin.AddViewGroup('PanelStream', viewMode='PanelStream', mediaType='items')
-
   ObjectContainer.title1 = 'YouTube'
-  ObjectContainer.view_group = 'List'
 
   HTTP.CacheTime = CACHE_1HOUR
   HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:19.0) Gecko/20100101 Firefox/19.0'
@@ -133,7 +128,7 @@ def ChannelsMenu(title):
 ####################################################################################################
 def LiveMenu(title):
 
-  oc = ObjectContainer(title2=title, view_group='PanelStream')
+  oc = ObjectContainer(title2=title)
 
   page_content = HTTP.Request(YOUTUBE_LIVE, cacheTime=0).content
   page = HTML.ElementFromString(page_content)
@@ -279,7 +274,7 @@ def ShowsMenu(title):
 ####################################################################################################
 def ShowsCategoryMenu(title, url, page=1):
 
-  oc = ObjectContainer(title2=title, view_group='InfoList')
+  oc = ObjectContainer(title2=title)
   page_content = HTTP.Request(url + '?p=' + str(page)).content
   page = HTML.ElementFromString(page_content)
 
@@ -318,7 +313,7 @@ def ShowSeasons(title, url, thumb):
   if (single_season):
     return ShowsVideos(title, url, thumb)
 
-  oc = ObjectContainer(title2 = title, view_group = 'InfoList')
+  oc = ObjectContainer(title2 = title)
   seasons = page.xpath("//div[contains(@class, 'season')]//span/button")
 
   for season in seasons:
@@ -336,7 +331,7 @@ def ShowSeasons(title, url, thumb):
 ####################################################################################################
 def ShowsVideos(title, url, thumb):
 
-  oc = ObjectContainer(title2=title, view_group='InfoList')
+  oc = ObjectContainer(title2=title)
   page = HTML.ElementFromURL(url)
   selected_season = page.xpath("//div[contains(@class, 'season')]//span/button[contains(@class, 'toggled')]")[0]
   ajax_url = YOUTUBE + selected_season.get('data-episodes-ajax-url')
@@ -507,7 +502,7 @@ def CheckRejectedEntry(entry):
 ####################################################################################################
 def ParseFeed(title, url, page = 1):
 
-  oc = ObjectContainer(title2=title, view_group='InfoList', replace_parent=(page > 1))
+  oc = ObjectContainer(title2=title, replace_parent=(page > 1))
 
   # Construct the appropriate URL
   local_url = AddJSONSuffix(url)
@@ -597,7 +592,7 @@ def ParseFeed(title, url, page = 1):
 ####################################################################################################
 def ParseSubscriptionFeed(title, url='', page=1):
 
-  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+  oc = ObjectContainer(title2 = title, replace_parent = (page > 1))
 
   # Construct the appropriate URL
   local_url = AddJSONSuffix(url)
@@ -676,7 +671,7 @@ def ParseSubscriptionFeed(title, url='', page=1):
 ####################################################################################################
 def ParseChannelFeed(title, url, page = 1):
 
-  oc = ObjectContainer(title2 = title, view_group = 'InfoList', replace_parent = (page > 1))
+  oc = ObjectContainer(title2 = title, replace_parent = (page > 1))
 
   # Construct the appropriate URL
   local_url = AddJSONSuffix(url)
@@ -732,7 +727,7 @@ def ParsePreFeed(title, feedpage):
 ####################################################################################################
 def ParseChannelSearch(title, url, page = 1):
 
-  oc = ObjectContainer(view_group = 'InfoList', replace_parent = (page > 1))
+  oc = ObjectContainer(replace_parent = (page > 1))
 
   local_url = AddJSONSuffix(url)
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
@@ -773,7 +768,7 @@ def ParseChannelSearch(title, url, page = 1):
 ####################################################################################################
 def ParsePlaylists(title, url, page = 1):
 
-  oc = ObjectContainer(title2=title, view_group='InfoList', replace_parent=(page > 1))
+  oc = ObjectContainer(title2=title, replace_parent=(page > 1))
 
   local_url = AddJSONSuffix(url)
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
@@ -813,7 +808,7 @@ def ParsePlaylists(title, url, page = 1):
 ####################################################################################################
 def ParseSubscriptions(title, url = '',page = 1):
 
-  oc = ObjectContainer(title2=title, view_group='InfoList', replace_parent=(page > 1))
+  oc = ObjectContainer(title2=title, replace_parent=(page > 1))
 
   local_url = AddJSONSuffix(url)
   local_url += '&start-index=' + str((page - 1) * MAXRESULTS + 1)
