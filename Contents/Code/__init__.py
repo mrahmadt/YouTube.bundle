@@ -51,7 +51,7 @@ def Start():
   ObjectContainer.title1 = 'YouTube'
 
   HTTP.CacheTime = CACHE_1HOUR
-  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:19.0) Gecko/20100101 Firefox/19.0'
+  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'
   HTTP.Headers['X-GData-Key'] = "key=%s" % DEVELOPER_KEY
 
   Dict.Reset()
