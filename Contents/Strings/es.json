@@ -1,0 +1,59 @@
+{
+  "YouTube Title": "YouTube",
+  
+  "Today": "Hoy",
+  "This Week": "Esta Semana",
+  "This Month": "Este Mes",
+  "All Time": "Siempre",
+  
+  "Most Recent": "Más Recientes",
+  "Most Viewed": "Más Vistos",
+  "Top Rated": "Mejor Valorados",
+  "Most Discussed": "Más Comentados",
+  "Most Subscribed": "Más Suscriptores",
+
+  "Search YouTube": "Buscar en YouTube",
+  "Search Videos": "Buscar Vídeos",
+  "Search Channels": "Buscar Canales",
+  
+  "Videos": "Vídeos",
+  "Channels": "Canales",
+  "Movies": "Películas",
+  "Shows": "Shows",
+  "Music": "Música",
+  "Trailers": "Trailers",  
+  "Preferences": "Preferencias",
+
+  "Previous Page ...": "Página Anterior ...",
+  "Next Page ...": "Página Siguiente ...",
+
+  "Air date : ": "Día de Emisión : ",
+  "Videos for ": "Vídeos de ",
+
+  "My Account": "Mi Cuenta",  
+  "My Videos": "Mis Vídeos",
+  "My Favorites": "Mis Favoritos",
+  "My Playlists": "Mis Listas de Reproducción",
+  "My Subscriptions": "Mis Suscripciones",
+  "My Contacts": "Mis Contactos",
+
+  "Login sucessful": "Login correcto",
+  "You are now logged in": "Ahora estás conectado",
+  "Login failed": "Login fallido",
+  "Please go back to the preference menu and re-enter your credentials": "Por favor dirígase al menú de preferencias y vuelva a introducir sus credenciales",
+  "Error": "Error",
+  "This query did not return any result": "No hay resultados para esta consulta",
+  "You have no subscriptions": "No tienes suscripciones",
+  "This user has no subscriptions": "Este usuario no tiene suscripciones",
+  "You have no contacts": "No tienes contactos",
+  "This feed does not contain any video": "Este feed no contiene vídeos",
+  
+  " (Activity)": " (Actividad)",
+  " (Videos)": " (Vídeos)",
+  
+  "'s uploads": ": sus vídeos",
+  "'s favorites": ": sus favoritos",
+  "'s subscriptions": ": sus suscripciones",
+  "'s playlists": ": sus listas de reproducción"
+}
+
