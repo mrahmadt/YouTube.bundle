@@ -74,6 +74,20 @@ def MainMenu():
   else:
     localizedVideosName = L('Videos for ') + regionName
 
+  oc.add(DirectoryObject(
+    key = Callback(
+      ParseFeed, 
+      title = L('Most Viewed'), 
+      url = YOUTUBE_STANDARD_MOST_VIEWED_URI + '?time=today'), 
+    title = L('Most Viewed')
+  ))
+
+  #oc.add(DirectoryObject(key = Callback(ParseChannelFeed, title=L('Most Viewed'), url=YOUTUBE_CHANNELS_MOSTVIEWED_URI),title = L('Most Viewed')))
+  if 'loggedIn' in Dict and Dict['loggedIn'] == True:
+    oc.add(DirectoryObject(
+      key = Callback(ParseFeed, title=L('New Subscription Videos'), url=YOUTUBE_USER_NEWSUBSCRIPTIONS % 'default'),
+      title = L('New Subscription Videos')
+    ))
   oc.add(DirectoryObject(key = Callback(VideosMenu, title = localizedVideosName), title = localizedVideosName))
   oc.add(DirectoryObject(key = Callback(ChannelsMenu, title = L('Channels')), title = L('Channels')))
   #oc.add(DirectoryObject(key = Callback(MoviesMenu, title = L('Movies')), title = L('Movies')))
